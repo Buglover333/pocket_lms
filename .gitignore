@@ -1,0 +1,43 @@
+# Переменные окружения (пароли, ключи API — никогда не должны попасть в Git)
+.env
+.env.*
+!.env.example
+
+# Виртуальное окружение Python (пересоздаётся через uv sync)
+.venv/
+
+# Кэш Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Артефакты сборки Python
+*.egg-info/
+dist/
+build/
+
+# Node.js (для фронтенда на React)
+node_modules/
+
+# Данные Docker volumes (хранятся локально, не в репозитории)
+pgdata/
+
+# macOS системные файлы
+.DS_Store
+
+# Windows системные файлы
+Thumbs.db
+desktop.ini
+
+# Логи
+*.log
+logs/
+
+# PyCharm / JetBrains IDE
+.idea/
+
+# VS Code (личные настройки редактора)
+.vscode/
+
+# Pytest кэш
+.pytest_cache/

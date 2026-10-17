@@ -15,7 +15,7 @@ class UserRegister(BaseModel):
 
     email: str = Field(min_length=3, max_length=255)
     first_name: str = Field(min_length=1, max_length=100)
-    last_name: str | None = Field(default=None, max_length=100)
+    last_name: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=8, max_length=64)
     password_confirm: str
 
@@ -52,7 +52,7 @@ class UserCreate(BaseModel):
     email: str = Field(min_length=3, max_length=255)
     password_hash: str = Field(min_length=1, max_length=255)
     first_name: str = Field(min_length=1, max_length=100)
-    last_name: str | None = Field(default=None, max_length=100)
+    last_name: str = Field(min_length=1, max_length=100)
 
     @field_validator("email")
     @classmethod
@@ -85,7 +85,7 @@ class UserUpdate(BaseModel):
 
     @model_validator(mode="after")
     def reject_null_required_fields(self) -> "UserUpdate":
-        for field_name in ("email", "password_hash", "first_name"):
+        for field_name in ("email", "password_hash", "first_name", "last_name"):
             if field_name in self.model_fields_set and getattr(self, field_name) is None:
                 raise ValueError(f"Поле {field_name} не может быть пустым")
         return self
@@ -99,7 +99,7 @@ class UserResponse(BaseModel):
     id: UUID
     email: str
     first_name: str
-    last_name: str | None
+    last_name: str
     is_active: bool
     created_at: datetime
     updated_at: datetime

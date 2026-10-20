@@ -5,17 +5,17 @@ from psycopg.rows import dict_row
 
 try:
     from backend.schemas.data import (
-        DisciplineCreate,
-        DisciplineUpdate,
-        ModuleCreate,
-        ModuleUpdate,
+        DisciplineCreateRequest,
+        DisciplineUpdateRequest,
+        ModuleCreateRequest,
+        ModuleUpdateRequest,
     )
 except (ImportError, ValueError):
     from ..schemas.data import (
-        DisciplineCreate,
-        DisciplineUpdate,
-        ModuleCreate,
-        ModuleUpdate,
+        DisciplineCreateRequest,
+        DisciplineUpdateRequest,
+        ModuleCreateRequest,
+        ModuleUpdateRequest,
     )
 
 
@@ -35,7 +35,7 @@ async def get_user_by_id(conn: psycopg.AsyncConnection, user_id: UUID) -> dict |
 # 1. МЕТОДЫ ДЛЯ МОДУЛЕЙ (Таблица modules)
 # ==============================================================================
 
-async def create_module(conn: psycopg.AsyncConnection, data: ModuleCreate) -> dict:
+async def create_module(conn: psycopg.AsyncConnection, data: ModuleCreateRequest) -> dict:
     """Создает новый образовательный модуль."""
     query = """
         INSERT INTO modules (title, description, curator_id)
@@ -70,7 +70,7 @@ async def get_modules_list(
 async def update_module(
     conn: psycopg.AsyncConnection,
     module_id: UUID,
-    data: ModuleUpdate
+    data: ModuleUpdateRequest
 ) -> dict | None:
     """Обновляет только переданные поля модуля."""
     update_data = data.model_dump(exclude_unset=True)
@@ -105,7 +105,7 @@ async def delete_module(conn: psycopg.AsyncConnection, module_id: UUID) -> bool:
 # 2. МЕТОДЫ ДЛЯ ДИСЦИПЛИН / КУРСОВ (Таблица disciplines)
 # ==============================================================================
 
-async def create_discipline(conn: psycopg.AsyncConnection, data: DisciplineCreate) -> dict:
+async def create_discipline(conn: psycopg.AsyncConnection, data: DisciplineCreateRequest) -> dict:
     """Создает новый курс/дисциплину."""
     query = """
         INSERT INTO disciplines (
@@ -170,7 +170,7 @@ async def get_disciplines_list(
 async def update_discipline(
     conn: psycopg.AsyncConnection,
     discipline_id: UUID,
-    data: DisciplineUpdate
+    data: DisciplineUpdateRequest
 ) -> dict | None:
     """Обновляет только переданные поля курса."""
     update_data = data.model_dump(exclude_unset=True)

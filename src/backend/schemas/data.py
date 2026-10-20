@@ -13,11 +13,11 @@ class ModuleBase(BaseModel):
     description: str | None = Field(None, description="Описание программы модуля")
 
 
-class ModuleCreate(ModuleBase):
+class ModuleCreateRequest(ModuleBase):
     curator_id: UUID = Field(..., description="ID пользователя-куратора модуля")
 
 
-class ModuleUpdate(BaseModel):
+class ModuleUpdateRequest(BaseModel):
     title: str | None = Field(None, max_length=255, description="Название образовательного модуля")
     description: str | None = Field(None, description="Описание программы модуля")
     curator_id: UUID | None = Field(None, description="ID пользователя-куратора модуля")
@@ -48,14 +48,14 @@ class DisciplineBase(BaseModel):
     ends_at: date | None = Field(None, description="Дата окончания курса для авто-архивации")
 
 
-class DisciplineCreate(DisciplineBase):
+class DisciplineCreateRequest(DisciplineBase):
     author_id: UUID = Field(..., description="ID создателя курса (защита от курсов-сирот)")
     invite_code: str = Field(..., max_length=32, description="Уникальный код для записи на курс")
     module_id: UUID | None = Field(None, description="ID модуля (NULL для общевузовских дисциплин и свободных элективов)")
     cover_file_id: UUID | None = Field(None, description="ID файла обложки из таблицы files")
 
 
-class DisciplineUpdate(BaseModel):
+class DisciplineUpdateRequest(BaseModel):
     title: str | None = Field(None, max_length=255, description="Название курса/предмета")
     discipline_type: DisciplineType | None = Field(None, description="Тип дисциплины")
     status: DisciplineStatus | None = Field(None, description="Статус курса")

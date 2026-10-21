@@ -134,6 +134,21 @@ CREATE TABLE IF NOT EXISTS files (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_is_active ON users (is_active);
+
 -- ==============================================================================
 -- ВНЕШНИЕ СВЯЗИ ДЛЯ УСТРАНЕНИЯ ЦИКЛИЧЕСКИХ ЗАВИСИМОСТЕЙ
 -- ==============================================================================
@@ -164,3 +179,5 @@ BEGIN
             FOREIGN KEY (template_file_id) REFERENCES files(id) ON DELETE SET NULL;
     END IF;
 END $$;
+
+

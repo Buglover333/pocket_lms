@@ -10,6 +10,7 @@ services:
     ports:
       # Внешний порт изменен на 5433 из-за конфликта с локально установленной службой PostgreSQL (занят порт 5432)
       - "5433:5432"
+
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./src/backend/db/schemas.sql:/docker-entrypoint-initdb.d/01-schemas.sql:ro

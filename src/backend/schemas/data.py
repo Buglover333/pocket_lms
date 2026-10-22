@@ -1,11 +1,9 @@
 from datetime import date, datetime
-from typing import Literal
-from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 import re
-from datetime import datetime
+from typing import Any, Literal
+from uuid import UUID
 
-
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # ==============================================================================
@@ -79,6 +77,10 @@ class DisciplineResponse(DisciplineBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+# ==============================================================================
+# 3. СХЕМЫ ПОЛЬЗОВАТЕЛЕЙ (Таблица users)
+# ==============================================================================
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -178,3 +180,241 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+
+# ==============================================================================
+# 4. СХЕМЫ КОМАНД (Таблица teams)
+# ==============================================================================
+
+class TeamBase(BaseModel):
+    name: str = Field(..., max_length=100, description="Название команды")
+    description: str | None = Field(None, description="Описание командного проекта / тема")
+
+
+class TeamCreateRequest(TeamBase):
+    discipline_id: UUID = Field(..., description="К какому курсу относится команда")
+
+
+class TeamUpdateRequest(BaseModel):
+    name: str | None = Field(None, max_length=100)
+    description: str | None = None
+
+
+class TeamResponse(TeamBase):
+    id: UUID
+    discipline_id: UUID
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==============================================================================
+# 5. СХЕМЫ УЧАСТНИКОВ КУРСА (Таблица discipline_members)
+# ==============================================================================
+
+MemberRole = Literal["owner", "teacher", "student"]
+MemberStatus = Literal["active", "invited", "left"]
+
+
+class DisciplineMemberBase(BaseModel):
+    role: MemberRole = Field(default="student", description="Роль: owner | teacher | student")
+    status: MemberStatus = Field(default="active", description="Статус: active | invited | left")
+    team_id: UUID | None = Field(None, description="В какой команде состоит студент на этом курсе")
+
+
+class DisciplineMemberCreateRequest(DisciplineMemberBase):
+    discipline_id: UUID = Field(..., description="ID курса")
+    user_id: UUID = Field(..., description="ID пользователя")
+
+
+class DisciplineMemberUpdateRequest(BaseModel):
+    role: MemberRole | None = None
+    status: MemberStatus | None = None
+    team_id: UUID | None = None
+
+
+class DisciplineMemberResponse(DisciplineMemberBase):
+    id: UUID
+    discipline_id: UUID
+    user_id: UUID
+    enrolled_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DisciplineMemberProfileResponse(DisciplineMemberResponse):
+    """Расширенный профиль участника с контактными данными из users (для раздела Контакты)."""
+    email: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    avatar_id: UUID | None = None
+
+
+# ==============================================================================
+# 6. СХЕМЫ УРОКОВ (Таблица lessons)
+# ==============================================================================
+
+class LessonBase(BaseModel):
+    title: str = Field(..., max_length=255, description="Тема занятия")
+    order_index: int = Field(default=0, description="Порядковый номер занятия")
+    content_markdown: str | None = Field(None, description="Конспект лекции в Markdown")
+    is_published: bool = Field(default=True, description="Опубликован ли урок")
+
+
+class LessonCreateRequest(LessonBase):
+    discipline_id: UUID = Field(..., description="К какому курсу относится урок")
+
+
+class LessonUpdateRequest(BaseModel):
+    title: str | None = Field(None, max_length=255)
+    order_index: int | None = None
+    content_markdown: str | None = None
+    is_published: bool | None = None
+
+
+class LessonResponse(LessonBase):
+    id: UUID
+    discipline_id: UUID
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==============================================================================
+# 7. СХЕМЫ ЗАДАНИЙ (Таблица assignments)
+# ==============================================================================
+
+AssignmentTargetType = Literal["all", "selective"]
+
+
+class AssignmentBase(BaseModel):
+    title: str = Field(..., max_length=255, description="Название задания / лабораторной")
+    description_markdown: str = Field(..., description="ТЗ и требования в Markdown")
+    target_type: AssignmentTargetType = Field(default="all", description="all (всем) | selective (выборочно)")
+    is_team_work: bool = Field(default=False, description="Командное задание (True) или индивидуальное (False)")
+    max_score: int = Field(default=100, gt=0, description="Максимальный балл (> 0)")
+    due_date: datetime | None = Field(None, description="Дедлайн сдачи")
+    template_file_id: UUID | None = Field(None, description="Шаблон / методичка из files")
+    is_published: bool = Field(default=True, description="Опубликовано ли задание")
+
+
+class AssignmentCreateRequest(AssignmentBase):
+    lesson_id: UUID = Field(..., description="К какому уроку привязано задание")
+
+
+class AssignmentUpdateRequest(BaseModel):
+    title: str | None = Field(None, max_length=255)
+    description_markdown: str | None = None
+    target_type: AssignmentTargetType | None = None
+    is_team_work: bool | None = None
+    max_score: int | None = Field(None, gt=0)
+    due_date: datetime | None = None
+    template_file_id: UUID | None = None
+    is_published: bool | None = None
+
+
+class AssignmentResponse(AssignmentBase):
+    id: UUID
+    lesson_id: UUID
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==============================================================================
+# 8. СХЕМЫ ПЕРСОНАЛЬНОЙ ВЫДАЧИ ЗАДАНИЙ (Таблица assignment_targets)
+# ==============================================================================
+
+class AssignmentTargetCreateRequest(BaseModel):
+    assignment_id: UUID = Field(..., description="ID задания")
+    member_id: UUID = Field(..., description="ID участника курса (discipline_members)")
+
+
+class AssignmentTargetResponse(BaseModel):
+    id: UUID
+    assignment_id: UUID
+    member_id: UUID
+    assigned_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==============================================================================
+# 9. СХЕМЫ СДАЧИ ЗАДАНИЙ И ОЦЕНИВАНИЯ (Таблица submissions)
+# ==============================================================================
+
+SubmissionStatus = Literal["draft", "submitted", "in_review", "graded", "returned"]
+
+
+class SubmissionCreateRequest(BaseModel):
+    assignment_id: UUID = Field(..., description="ID задания")
+    team_id: UUID | None = Field(None, description="Команда (если задание командное, иначе NULL)")
+    submitted_by: UUID = Field(..., description="Студент, который физически отправил работу")
+    answer_text: str | None = Field(None, description="Текстовый ответ / комментарий к сдаче")
+    status: SubmissionStatus = Field(default="submitted", description="Статус сдачи")
+
+
+class SubmissionUpdateRequest(BaseModel):
+    answer_text: str | None = None
+    status: SubmissionStatus | None = None
+
+
+class SubmissionReviewRequest(BaseModel):
+    """Оценивание работы или возврат на доработку преподавателем."""
+    status: Literal["graded", "returned"] = Field(..., description="graded (оценено) | returned (на доработку)")
+    score: float | None = Field(None, ge=0, description="Итоговый балл (обязателен при status='graded')")
+    feedback: str | None = Field(None, description="Рецензия / разбор ошибок преподавателем")
+    grader_id: UUID = Field(..., description="Преподаватель, выставивший оценку")
+
+
+class SubmissionResponse(BaseModel):
+    id: UUID
+    assignment_id: UUID
+    team_id: UUID | None
+    submitted_by: UUID
+    status: SubmissionStatus
+    attempt_number: int
+    answer_text: str | None
+    submitted_at: datetime
+    is_late: bool
+    updated_at: datetime | None
+    score: float | None
+    feedback: str | None
+    grader_id: UUID | None
+    graded_at: datetime | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==============================================================================
+# 10. СХЕМЫ ФАЙЛОВ И РЕСУРСОВ (Таблица files)
+# ==============================================================================
+
+FileType = Literal["link", "document", "video", "image", "archive"]
+
+
+class FileBase(BaseModel):
+    file_type: FileType = Field(..., description="Тип: link | document | video | image | archive")
+    url: str = Field(..., max_length=1024, description="Единый URL: S3, Яндекс.Документ, YouTube или внешняя ссылка")
+    file_name: str | None = Field(None, max_length=255, description="Оригинальное имя файла или заголовок ссылки")
+    size_bytes: int | None = Field(None, description="Размер в байтах (NULL для внешних ссылок)")
+    mime_type: str | None = Field(None, max_length=128, description="MIME-тип")
+    meta: dict[str, Any] | None = Field(None, description="Технические метаданные S3 / API")
+
+
+class FileCreateRequest(FileBase):
+    uploader_id: UUID | None = Field(None, description="Кто загрузил / добавил ссылку")
+    lesson_id: UUID | None = Field(None, description="Урок, к которому прикреплён материал")
+    submission_id: UUID | None = Field(None, description="Сдача, к которой прикреплён файл")
+
+
+class FileResponse(FileBase):
+    id: UUID
+    uploader_id: UUID | None
+    lesson_id: UUID | None
+    submission_id: UUID | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

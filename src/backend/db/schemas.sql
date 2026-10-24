@@ -148,6 +148,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_is_active ON users (is_active);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email_lower ON users (lower(email));
 
 -- ==============================================================================
 -- ВНЕШНИЕ СВЯЗИ ДЛЯ УСТРАНЕНИЯ ЦИКЛИЧЕСКИХ ЗАВИСИМОСТЕЙ

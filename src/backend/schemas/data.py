@@ -1,9 +1,8 @@
 from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 import re
-from datetime import datetime
 
 
 
@@ -88,7 +87,7 @@ class UserRegister(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    email: str = Field(min_length=3, max_length=255)
+    email: EmailStr = Field(max_length=255)
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=8, max_length=64)
@@ -97,10 +96,12 @@ class UserRegister(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email(cls, value: str) -> str:
-        value = value.strip()
-        if not _EMAIL_RE.fullmatch(value):
-            raise ValueError("Введите корректный адрес электронной почты")
-        return value
+        return value.lower()
+
+    @field_validator("first_name", "last_name", mode="before")
+    @classmethod
+    def strip_name(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
 
     @model_validator(mode="after")
     def validate_password(self) -> "UserRegister":
@@ -112,10 +113,6 @@ class UserRegister(BaseModel):
         if password != self.password_confirm:
             raise ValueError("Пароли не совпадают")
 
-        personal_values = [self.email, self.email.split("@", 1)[0], self.first_name, self.last_name]
-        normalized_password = password.casefold()
-        if any(value and normalized_password == value.strip().casefold() for value in personal_values):
-            raise ValueError("Пароль не должен совпадать с именем или электронной почтой")
         return self
 
 

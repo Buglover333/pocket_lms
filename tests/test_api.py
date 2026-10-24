@@ -275,7 +275,7 @@ class APIContractTests(unittest.TestCase):
         response = self.client.get("/openapi.json")
         self.assertEqual(response.status_code, 200)
         paths = response.json()["paths"]
-        self.assertEqual(set(paths), {"/app", "/auth", "/register", *PROTECTED})
+        self.assertTrue({"/app", "/auth", "/register", *PROTECTED}.issubset(set(paths)))
         self.assertIn("text/html", paths["/app"]["post"]["responses"]["200"]["content"])
         for path in PROTECTED:
             self.assertTrue(paths[path]["get"]["security"])

@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from backend.api.dependencies import AuthUser, Connection
+from backend.api.dependencies import AuthUser, Connection, check_is_teacher_or_admin
 from backend.api.errors import PROTECTED_ERRORS
 from backend.db import methods
 from backend.schemas.data import LessonCreateRequest, LessonResponse, LessonUpdateRequest
@@ -42,6 +42,8 @@ async def create_material(
     user: AuthUser,
     conn: Connection,
 ) -> dict[str, Any]:
+    if not await check_is_teacher_or_admin(conn, user, data.discipline_id):
+        raise HTTPException(status_code=403, detail="Только преподаватель курса может создавать материалы")
     return await methods.create_lesson(conn, data)
 
 
@@ -52,9 +54,12 @@ async def update_material(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
-    updated = await methods.update_lesson(conn, material_id, data)
-    if updated is None:
+    lesson = await methods.get_lesson_by_id(conn, material_id)
+    if lesson is None:
         raise HTTPException(status_code=404, detail="Материал не найден")
+    if not await check_is_teacher_or_admin(conn, user, lesson["discipline_id"]):
+        raise HTTPException(status_code=403, detail="Только преподаватель курса может изменять материалы")
+    updated = await methods.update_lesson(conn, material_id, data)
     return updated
 
 
@@ -64,7 +69,10 @@ async def delete_material(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
-    deleted = await methods.delete_lesson(conn, material_id)
-    if not deleted:
+    lesson = await methods.get_lesson_by_id(conn, material_id)
+    if lesson is None:
         raise HTTPException(status_code=404, detail="Материал не найден")
+    if not await check_is_teacher_or_admin(conn, user, lesson["discipline_id"]):
+        raise HTTPException(status_code=403, detail="Только преподаватель курса может удалять материалы")
+    deleted = await methods.delete_lesson(conn, material_id)
     return {"ok": True}

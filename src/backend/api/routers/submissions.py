@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from backend.api.dependencies import AuthUser, Connection
+from backend.api.dependencies import AuthUser, Connection, check_is_teacher_or_admin
 from backend.api.errors import PROTECTED_ERRORS
 from backend.db import methods
 from backend.schemas.data import (
@@ -46,6 +46,12 @@ async def get_submissions(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
+    assignment = await methods.get_assignment_by_id(conn, assignment_id)
+    if assignment:
+        lesson = await methods.get_lesson_by_id(conn, assignment["lesson_id"])
+        disc_id = lesson["discipline_id"] if lesson else None
+        if not await check_is_teacher_or_admin(conn, user, disc_id):
+            raise HTTPException(status_code=403, detail="Только преподаватель может просматривать все сданные работы")
     submissions = await methods.get_submissions_by_assignment(conn, assignment_id)
     return {"items": submissions}
 
@@ -70,6 +76,21 @@ async def grade_submission(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
+    submission = await methods.get_submission_by_id(conn, submission_id)
+    if submission is None:
+        raise HTTPException(status_code=404, detail="Сдача не найдена")
+    assignment = await methods.get_assignment_by_id(conn, submission["assignment_id"])
+    if assignment:
+        lesson = await methods.get_lesson_by_id(conn, assignment["lesson_id"])
+        disc_id = lesson["discipline_id"] if lesson else None
+        if not await check_is_teacher_or_admin(conn, user, disc_id):
+            raise HTTPException(status_code=403, detail="Только преподаватель курса может выставлять оценку")
+    elif not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Только преподаватель курса может выставлять оценку")
+
+    if data and (not data.grader_id or not user.get("is_admin")):
+        data = data.model_copy(update={"grader_id": user["id"]})
+
     reviewed = await methods.review_submission(conn, submission_id, data)
     if reviewed is None:
         raise HTTPException(status_code=404, detail="Сдача не найдена")
@@ -83,10 +104,23 @@ async def return_submission(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
+    submission = await methods.get_submission_by_id(conn, submission_id)
+    if submission is None:
+        raise HTTPException(status_code=404, detail="Сдача не найдена")
+    assignment = await methods.get_assignment_by_id(conn, submission["assignment_id"])
+    if assignment:
+        lesson = await methods.get_lesson_by_id(conn, assignment["lesson_id"])
+        disc_id = lesson["discipline_id"] if lesson else None
+        if not await check_is_teacher_or_admin(conn, user, disc_id):
+            raise HTTPException(status_code=403, detail="Только преподаватель курса может возвращать работу на доработку")
+    elif not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Только преподаватель курса может возвращать работу на доработку")
+
     review_data = SubmissionReviewRequest(
         status="returned",
         feedback=feedback,
-        grade=None,
+        grader_id=user["id"],
+        score=None,
     )
     reviewed = await methods.review_submission(conn, submission_id, review_data)
     if reviewed is None:

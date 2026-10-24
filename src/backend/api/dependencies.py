@@ -74,3 +74,27 @@ async def require_auth_user(
 
 
 AuthUser = Annotated[dict[str, Any], Depends(require_auth_user)]
+
+
+async def check_is_teacher_or_admin(
+    conn: psycopg.AsyncConnection,
+    user: dict[str, Any],
+    discipline_id: UUID | None = None,
+) -> bool:
+    """Проверяет, является ли пользователь преподавателем курса или администратором."""
+    if user.get("is_admin"):
+        return True
+    if discipline_id is None:
+        disciplines = await methods.get_user_disciplines(conn, user["id"], active_only=True)
+        return any(d.get("member_role") in ("owner", "teacher") for d in disciplines)
+    course = await methods.get_discipline_by_id(conn, discipline_id)
+    if course and course.get("author_id") == user["id"]:
+        return True
+    members = await methods.get_discipline_members(conn, discipline_id)
+    return any(
+        m["user_id"] == user["id"]
+        and m.get("role") in ("owner", "teacher")
+        and m.get("status") == "active"
+        for m in members
+    )
+

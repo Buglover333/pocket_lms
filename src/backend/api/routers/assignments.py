@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from backend.api.dependencies import AuthUser, Connection
+from backend.api.dependencies import AuthUser, Connection, check_is_teacher_or_admin
 from backend.api.errors import PROTECTED_ERRORS
 from backend.db import methods
 from backend.schemas.data import (
@@ -46,6 +46,10 @@ async def create_assignment(
     user: AuthUser,
     conn: Connection,
 ) -> dict[str, Any]:
+    lesson = await methods.get_lesson_by_id(conn, data.lesson_id)
+    disc_id = lesson["discipline_id"] if lesson else None
+    if not await check_is_teacher_or_admin(conn, user, disc_id):
+        raise HTTPException(status_code=403, detail="Только преподаватель курса может создавать задания")
     return await methods.create_assignment(conn, data)
 
 
@@ -56,9 +60,14 @@ async def update_assignment(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
-    updated = await methods.update_assignment(conn, assignment_id, data)
-    if updated is None:
+    assignment = await methods.get_assignment_by_id(conn, assignment_id)
+    if assignment is None:
         raise HTTPException(status_code=404, detail="Задание не найдено")
+    lesson = await methods.get_lesson_by_id(conn, assignment["lesson_id"])
+    disc_id = lesson["discipline_id"] if lesson else None
+    if not await check_is_teacher_or_admin(conn, user, disc_id):
+        raise HTTPException(status_code=403, detail="Только преподаватель курса может редактировать задания")
+    updated = await methods.update_assignment(conn, assignment_id, data)
     return updated
 
 
@@ -68,9 +77,14 @@ async def delete_assignment(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
-    deleted = await methods.delete_assignment(conn, assignment_id)
-    if not deleted:
+    assignment = await methods.get_assignment_by_id(conn, assignment_id)
+    if assignment is None:
         raise HTTPException(status_code=404, detail="Задание не найдено")
+    lesson = await methods.get_lesson_by_id(conn, assignment["lesson_id"])
+    disc_id = lesson["discipline_id"] if lesson else None
+    if not await check_is_teacher_or_admin(conn, user, disc_id):
+        raise HTTPException(status_code=403, detail="Только преподаватель курса может удалять задания")
+    deleted = await methods.delete_assignment(conn, assignment_id)
     return {"ok": True}
 
 

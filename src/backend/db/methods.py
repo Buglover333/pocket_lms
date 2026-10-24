@@ -129,7 +129,7 @@ async def update_user(
     assignments.append(sql.SQL("updated_at = CURRENT_TIMESTAMP"))
     query = sql.SQL(
         "UPDATE users SET {} WHERE id = %s AND is_active = TRUE "
-        "RETURNING id, email, first_name, last_name, is_active, created_at, updated_at;"
+        "RETURNING id, email, first_name, last_name, middle_name, avatar_id, is_admin, is_active, created_at, updated_at;"
     ).format(sql.SQL(", ").join(assignments))
     async with conn.cursor(row_factory=dict_row) as cur:
         await cur.execute(query, (*changes.values(), user_id))

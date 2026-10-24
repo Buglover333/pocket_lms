@@ -1,13 +1,22 @@
-"""Курсы текущего пользователя."""
+"""Курсы и дисциплины."""
 
 from typing import Any
+from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Query, status
 
-from backend.api.dependencies import Connection, CurrentUser
+from backend.api.dependencies import AuthUser, Connection, CurrentUser
 from backend.api.errors import PROTECTED_ERRORS
 from backend.db import methods
 from backend.schemas.api import CoursesResponse
+from backend.schemas.data import (
+    DisciplineCreateRequest,
+    DisciplineMemberCreateRequest,
+    DisciplineMemberProfileResponse,
+    DisciplineMemberResponse,
+    DisciplineResponse,
+    DisciplineUpdateRequest,
+)
 
 router = APIRouter(tags=["Курсы"], responses=PROTECTED_ERRORS)
 
@@ -15,3 +24,82 @@ router = APIRouter(tags=["Курсы"], responses=PROTECTED_ERRORS)
 @router.get("/get_courses", response_model=CoursesResponse)
 async def get_courses(user: CurrentUser, conn: Connection) -> dict[str, Any]:
     return {"items": await methods.get_user_disciplines(conn, user["id"], active_only=True)}
+
+
+@router.get("/get_course_data")
+async def get_course_data(
+    course_id: UUID = Query(...),
+    user: AuthUser = None,
+    conn: Connection = None,
+) -> dict[str, Any]:
+    course = await methods.get_discipline_by_id(conn, course_id)
+    if course is None:
+        raise HTTPException(status_code=404, detail="Курс не найден")
+    lessons = await methods.get_lessons_by_discipline(conn, course_id)
+    return {"course": course, "lessons": lessons}
+
+
+@router.post("/create_course", response_model=DisciplineResponse, status_code=status.HTTP_201_CREATED)
+async def create_course(
+    data: DisciplineCreateRequest,
+    user: AuthUser,
+    conn: Connection,
+) -> dict[str, Any]:
+    return await methods.create_discipline(conn, data)
+
+
+@router.patch("/update_course", response_model=DisciplineResponse)
+async def update_course(
+    course_id: UUID = Query(...),
+    data: DisciplineUpdateRequest = None,
+    user: AuthUser = None,
+    conn: Connection = None,
+) -> dict[str, Any]:
+    updated = await methods.update_discipline(conn, course_id, data)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Курс не найден")
+    return updated
+
+
+@router.post("/create_invitation")
+async def create_invitation(
+    course_id: UUID = Query(...),
+    user: AuthUser = None,
+    conn: Connection = None,
+) -> dict[str, Any]:
+    course = await methods.get_discipline_by_id(conn, course_id)
+    if course is None:
+        raise HTTPException(status_code=404, detail="Курс не найден")
+    return {
+        "course_id": course["id"],
+        "invite_code": course["invite_code"],
+        "invitation_url": f"/courses/join?code={course['invite_code']}",
+    }
+
+
+@router.post("/accept_invitation", response_model=DisciplineMemberResponse)
+async def accept_invitation(
+    invite_code: str = Query(...),
+    user: AuthUser = None,
+    conn: Connection = None,
+) -> dict[str, Any]:
+    course = await methods.get_discipline_by_invite_code(conn, invite_code)
+    if course is None:
+        raise HTTPException(status_code=404, detail="Неверный код приглашения")
+    member_data = DisciplineMemberCreateRequest(
+        discipline_id=course["id"],
+        user_id=user["id"],
+        role="student",
+        status="active",
+    )
+    return await methods.add_discipline_member(conn, member_data)
+
+
+@router.get("/get_members")
+async def get_members(
+    course_id: UUID = Query(...),
+    user: AuthUser = None,
+    conn: Connection = None,
+) -> dict[str, Any]:
+    members = await methods.get_discipline_members_with_profiles(conn, course_id)
+    return {"items": members}

@@ -54,3 +54,23 @@ async def require_current_user(
 
 
 CurrentUser = Annotated[dict[str, Any], Depends(require_current_user)]
+
+
+async def require_auth_user(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
+    conn: Connection,
+) -> dict[str, Any]:
+    if credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Требуется авторизация",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    uid = token_user_id(credentials.credentials)
+    user = await methods.get_user_by_id(conn, uid)
+    if user is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    return user
+
+
+AuthUser = Annotated[dict[str, Any], Depends(require_auth_user)]

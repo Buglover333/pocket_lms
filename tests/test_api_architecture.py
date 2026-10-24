@@ -8,7 +8,18 @@ from fastapi import APIRouter
 from fastapi.routing import APIRoute
 
 from backend.api.main import app
-from backend.api.routers import auth, courses, frontend, modules, users
+from backend.api.routers import (
+    assignments,
+    auth,
+    courses,
+    files,
+    frontend,
+    lessons,
+    modules,
+    submissions,
+    teams,
+    users,
+)
 
 
 class APIArchitectureTests(unittest.TestCase):
@@ -16,7 +27,7 @@ class APIArchitectureTests(unittest.TestCase):
         api_dir = Path(__file__).resolve().parents[1] / "src" / "backend" / "api"
         for path in api_dir.rglob("*.py"):
             with self.subTest(file=path.name):
-                tree = ast.parse(path.read_text())
+                tree = ast.parse(path.read_text(encoding="utf-8"))
                 forbidden = [
                     node.func.attr
                     for node in ast.walk(tree)
@@ -29,12 +40,24 @@ class APIArchitectureTests(unittest.TestCase):
     def test_endpoints_are_defined_in_separate_routers(self):
         paths = set()
         count = 0
-        for module in (auth, courses, frontend, modules, users):
+        routers = (
+            auth,
+            users,
+            courses,
+            modules,
+            lessons,
+            assignments,
+            submissions,
+            teams,
+            files,
+            frontend,
+        )
+        for module in routers:
             self.assertIsInstance(module.router, APIRouter)
             for route in module.router.routes:
                 if isinstance(route, APIRoute):
                     self.assertEqual(route.endpoint.__module__, module.__name__)
                     paths.add(route.path)
                     count += 1
-        self.assertEqual(count, 6)
+        self.assertEqual(count, len(paths))
         self.assertEqual(paths, set(app.openapi()["paths"]))

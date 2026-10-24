@@ -45,7 +45,7 @@ async def get_team_members(
 @router.patch("/update_group", response_model=TeamResponse)
 async def update_group(
     team_id: UUID = Query(...),
-    data: TeamUpdateRequest = None,
+    data: TeamUpdateRequest = ...,
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:

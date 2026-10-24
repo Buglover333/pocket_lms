@@ -38,17 +38,22 @@ async def create_module(
     user: AuthUser,
     conn: Connection,
 ) -> dict[str, Any]:
+    if data.curator_id != user["id"] and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Нельзя назначать другого куратора без прав администратора")
     return await methods.create_module(conn, data)
 
 
 @router.patch("/update_module", response_model=ModuleResponse)
 async def update_module(
     module_id: UUID = Query(...),
-    data: ModuleUpdateRequest = None,
+    data: ModuleUpdateRequest = ...,
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
-    updated = await methods.update_module(conn, module_id, data)
-    if updated is None:
+    module = await methods.get_module_by_id(conn, module_id)
+    if module is None:
         raise HTTPException(status_code=404, detail="Модуль не найден")
+    if module["curator_id"] != user["id"] and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Только куратор модуля может редактировать модуль")
+    updated = await methods.update_module(conn, module_id, data)
     return updated

@@ -281,6 +281,41 @@ class APIContractTests(unittest.TestCase):
             self.assertTrue(paths[path]["get"]["security"])
             self.assertTrue({"401", "403", "404", "422"}.issubset(paths[path]["get"]["responses"]))
 
+    def test_update_material_without_body_returns_422(self):
+        response = self.client.patch(
+            "/update_material",
+            params={"material_id": str(uuid4())},
+            headers=self.headers,
+        )
+        self.assert_error(response, 422)
+
+    def test_cannot_edit_course_without_teacher_permission_returns_403(self):
+        course = self.db.execute(
+            """INSERT INTO disciplines (author_id, title, discipline_type, status, invite_code)
+               VALUES (%s, 'Тестовый курс', 'module', 'published', %s) RETURNING *""",
+            (self.other["id"], uuid4().hex[:30]),
+        ).fetchone()
+        response = self.client.patch(
+            "/update_course",
+            params={"course_id": str(course["id"])},
+            json={"title": "Взломанный курс"},
+            headers=self.headers,
+        )
+        self.assert_error(response, 403)
+
+    def test_cannot_submit_work_for_other_user_returns_403(self):
+        response = self.client.post(
+            "/submit_work",
+            json={
+                "assignment_id": str(uuid4()),
+                "submitted_by": str(self.other["id"]),
+                "answer_text": "Чужой ответ",
+            },
+            headers=self.headers,
+        )
+        self.assert_error(response, 403)
+
+
 
 if __name__ == "__main__":
     unittest.main()

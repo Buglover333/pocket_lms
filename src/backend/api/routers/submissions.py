@@ -24,19 +24,24 @@ async def submit_work(
     user: AuthUser,
     conn: Connection,
 ) -> dict[str, Any]:
+    if data.submitted_by != user["id"] and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Нельзя сдать работу от чужого имени")
     return await methods.create_submission(conn, data)
 
 
 @router.post("/resubmit_work", response_model=SubmissionResponse)
 async def resubmit_work(
     submission_id: UUID = Query(...),
-    data: SubmissionUpdateRequest = None,
+    data: SubmissionUpdateRequest = ...,
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
-    updated = await methods.update_submission(conn, submission_id, data)
-    if updated is None:
+    submission = await methods.get_submission_by_id(conn, submission_id)
+    if submission is None:
         raise HTTPException(status_code=404, detail="Сдача не найдена")
+    if submission["submitted_by"] != user["id"] and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Нельзя изменять чужую работу")
+    updated = await methods.update_submission(conn, submission_id, data)
     return updated
 
 
@@ -72,7 +77,7 @@ async def get_submission_data(
 @router.post("/grade_submission", response_model=SubmissionResponse)
 async def grade_submission(
     submission_id: UUID = Query(...),
-    data: SubmissionReviewRequest = None,
+    data: SubmissionReviewRequest = ...,
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:

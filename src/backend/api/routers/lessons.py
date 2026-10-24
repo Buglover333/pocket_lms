@@ -50,7 +50,7 @@ async def create_material(
 @router.patch("/update_material", response_model=LessonResponse)
 async def update_material(
     material_id: UUID = Query(...),
-    data: LessonUpdateRequest = None,
+    data: LessonUpdateRequest = ...,
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:

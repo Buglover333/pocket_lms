@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from backend.api.dependencies import AuthUser, Connection, CurrentUser
+from backend.api.dependencies import AuthUser, Connection, CurrentUser, check_is_teacher_or_admin
 from backend.api.errors import PROTECTED_ERRORS
 from backend.db import methods
 from backend.schemas.api import CoursesResponse
@@ -45,19 +45,24 @@ async def create_course(
     user: AuthUser,
     conn: Connection,
 ) -> dict[str, Any]:
+    if data.author_id != user["id"] and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Нельзя создавать курс от имени другого автора")
     return await methods.create_discipline(conn, data)
 
 
 @router.patch("/update_course", response_model=DisciplineResponse)
 async def update_course(
     course_id: UUID = Query(...),
-    data: DisciplineUpdateRequest = None,
+    data: DisciplineUpdateRequest = ...,
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
-    updated = await methods.update_discipline(conn, course_id, data)
-    if updated is None:
+    course = await methods.get_discipline_by_id(conn, course_id)
+    if course is None:
         raise HTTPException(status_code=404, detail="Курс не найден")
+    if not await check_is_teacher_or_admin(conn, user, course_id):
+        raise HTTPException(status_code=403, detail="Только преподаватель курса может редактировать курс")
+    updated = await methods.update_discipline(conn, course_id, data)
     return updated
 
 
@@ -70,6 +75,8 @@ async def create_invitation(
     course = await methods.get_discipline_by_id(conn, course_id)
     if course is None:
         raise HTTPException(status_code=404, detail="Курс не найден")
+    if not await check_is_teacher_or_admin(conn, user, course_id):
+        raise HTTPException(status_code=403, detail="Только преподаватель курса может создавать приглашения")
     return {
         "course_id": course["id"],
         "invite_code": course["invite_code"],

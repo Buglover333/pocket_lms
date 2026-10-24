@@ -56,7 +56,7 @@ async def create_assignment(
 @router.patch("/update_assignment", response_model=AssignmentResponse)
 async def update_assignment(
     assignment_id: UUID = Query(...),
-    data: AssignmentUpdateRequest = None,
+    data: AssignmentUpdateRequest = ...,
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:

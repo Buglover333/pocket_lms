@@ -356,7 +356,7 @@ class APIContractTests(unittest.TestCase):
             (course["id"],),
         ).fetchone()
         assignment = self.db.execute(
-            "INSERT INTO assignments (lesson_id, title) VALUES (%s, 'Задание 1') RETURNING *",
+            "INSERT INTO assignments (lesson_id, title, description_markdown) VALUES (%s, 'Задание 1', 'Описание задания') RETURNING *",
             (lesson["id"],),
         ).fetchone()
         sub = self.db.execute(
@@ -368,6 +368,31 @@ class APIContractTests(unittest.TestCase):
             "/resubmit_work",
             params={"submission_id": str(sub["id"])},
             json={"status": "graded"},
+            headers=self.headers,
+        )
+        self.assert_error(response, 403)
+
+    def test_student_cannot_set_graded_status_on_submit_returns_403(self):
+        response = self.client.post(
+            "/submit_work",
+            json={
+                "assignment_id": str(uuid4()),
+                "submitted_by": str(self.user["id"]),
+                "answer_text": "Мой ответ",
+                "status": "graded",
+            },
+            headers=self.headers,
+        )
+        self.assert_error(response, 403)
+
+    def test_non_member_cannot_get_module_data_returns_403(self):
+        mod = self.db.execute(
+            "INSERT INTO modules (curator_id, title) VALUES (%s, 'Чужой модуль') RETURNING *",
+            (self.other["id"],),
+        ).fetchone()
+        response = self.client.get(
+            "/get_module_data",
+            params={"module_id": str(mod["id"])},
             headers=self.headers,
         )
         self.assert_error(response, 403)

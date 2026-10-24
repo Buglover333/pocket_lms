@@ -26,6 +26,10 @@ async def submit_work(
 ) -> dict[str, Any]:
     if data.submitted_by != user["id"] and not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Нельзя сдать работу от чужого имени")
+    if data.status and data.status in ("graded", "returned") and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Студент не может выставлять статус проверки 'graded' или 'returned'")
+    if not user.get("is_admin"):
+        data = data.model_copy(update={"status": "submitted"})
     return await methods.create_submission(conn, data)
 
 

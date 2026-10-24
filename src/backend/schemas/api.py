@@ -1,12 +1,13 @@
-"""Public request and response models from API_DESCRIPTION.md."""
+"""Модели публичного API; общие поля переиспользуются из schemas.data."""
 
-from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from backend.schemas.data import DisciplineStatus, DisciplineType
+from backend.schemas.data import (
+    DisciplineBase, MemberRole, ModuleBase, UserProfileResponse, UserPublicBase,
+)
 
 
 class ErrorResponse(BaseModel):
@@ -31,33 +32,16 @@ class AuthResponse(BaseModel):
     user_id: UUID
 
 
-class RegisterResponse(BaseModel):
-    id: UUID
-    email: str
-    first_name: str
-    last_name: str
-    is_active: bool
-    created_at: datetime
+RegisterResponse = UserPublicBase
+UserInfoResponse = UserProfileResponse
 
 
-class UserInfoResponse(RegisterResponse):
-    middle_name: str | None
-    avatar_id: UUID | None
-    is_admin: bool
-    updated_at: datetime | None
-
-
-class CourseItem(BaseModel):
+class CourseItem(DisciplineBase):
     id: UUID
     module_id: UUID | None
     author_id: UUID
-    title: str
-    discipline_type: DisciplineType
-    status: DisciplineStatus
-    description: str | None
     cover_file_id: UUID | None
-    ends_at: date | None
-    role: Literal["owner", "teacher", "student"]
+    role: MemberRole = Field(validation_alias=AliasChoices("role", "member_role"))
     team_id: UUID | None
 
 
@@ -65,10 +49,8 @@ class CoursesResponse(BaseModel):
     items: list[CourseItem]
 
 
-class ModuleItem(BaseModel):
+class ModuleItem(ModuleBase):
     id: UUID
-    title: str
-    description: str | None
     curator_id: UUID
 
 

@@ -4,6 +4,7 @@ Requires TEST_DATABASE_URL with a database name starting with pocket_lms_api_tes
 The suite creates its own records and removes those records after each check.
 """
 
+import asyncio
 import os
 import secrets
 import tempfile
@@ -21,6 +22,7 @@ from psycopg.conninfo import conninfo_to_dict
 from psycopg.rows import dict_row
 
 from backend.api.main import app
+from backend.db import methods
 from backend.api.security import hash_password, make_token, verify_password
 
 PROTECTED = ("/get_courses", "/get_modules", "/get_user_info")
@@ -191,6 +193,13 @@ class APIContractTests(unittest.TestCase):
                 )
             if membership == "active":
                 included.append(str(course))
+        async def get_all_memberships():
+            async with await psycopg.AsyncConnection.connect(os.environ["DATABASE_URL"]) as conn:
+                return await methods.get_user_disciplines(conn, self.user["id"])
+
+        # Existing CRUD callers still receive active, invited and left memberships.
+        all_memberships = asyncio.run(get_all_memberships())
+        self.assertEqual(len(all_memberships), 5)
         response = self.get("/get_courses")
         self.assertEqual(response.status_code, 200, response.text)
         items = response.json()["items"]
@@ -251,7 +260,7 @@ class APIContractTests(unittest.TestCase):
             index = Path(folder) / "index.html"
             html = "<!doctype html><html><body>Test frontend fixture</body></html>"
             index.write_text(html)
-            with patch("backend.api.main.FRONTEND_DIR", Path(folder)), patch.dict(os.environ, DATABASE_URL=""):
+            with patch("backend.api.routers.frontend.FRONTEND_DIR", Path(folder)), patch.dict(os.environ, DATABASE_URL=""):
                 response = self.client.post("/app")
             self.assertEqual(response.status_code, 200, response.text)
             self.assertTrue(response.headers["content-type"].startswith("text/html"))
@@ -259,7 +268,7 @@ class APIContractTests(unittest.TestCase):
 
     def test_app_without_build_reports_unavailable(self):
         with tempfile.TemporaryDirectory() as folder:
-            with patch("backend.api.main.FRONTEND_DIR", Path(folder)), patch.dict(os.environ, DATABASE_URL=""):
+            with patch("backend.api.routers.frontend.FRONTEND_DIR", Path(folder)), patch.dict(os.environ, DATABASE_URL=""):
                 self.assert_error(self.client.post("/app"), 503)
 
     def test_openapi_describes_the_contract(self):

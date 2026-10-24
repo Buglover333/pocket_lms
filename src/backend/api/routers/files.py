@@ -19,6 +19,10 @@ async def upload_file(
     user: AuthUser,
     conn: Connection,
 ) -> dict[str, Any]:
+    if data.uploader_id and data.uploader_id != user["id"] and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Нельзя загрузить файл от чужого имени")
+    if not data.uploader_id:
+        data = data.model_copy(update={"uploader_id": user["id"]})
     return await methods.create_file(conn, data)
 
 
@@ -40,7 +44,10 @@ async def delete_file(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
-    deleted = await methods.delete_file(conn, file_id)
-    if not deleted:
+    file_record = await methods.get_file_by_id(conn, file_id)
+    if file_record is None:
         raise HTTPException(status_code=404, detail="Файл не найден")
+    if file_record.get("uploader_id") and file_record["uploader_id"] != user["id"] and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Нельзя удалить чужой файл")
+    deleted = await methods.delete_file(conn, file_id)
     return {"ok": True}

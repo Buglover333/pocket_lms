@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from backend.api.dependencies import AuthUser, Connection
+from backend.api.dependencies import AuthUser, Connection, check_is_teacher_or_admin
 from backend.api.errors import PROTECTED_ERRORS
 from backend.db import methods
 from backend.schemas.data import TeamCreateRequest, TeamResponse, TeamUpdateRequest
@@ -29,6 +29,8 @@ async def create_group(
     user: AuthUser,
     conn: Connection,
 ) -> dict[str, Any]:
+    if not await check_is_teacher_or_admin(conn, user, data.discipline_id):
+        raise HTTPException(status_code=403, detail="Только преподаватель курса может создавать команды")
     return await methods.create_team(conn, data)
 
 
@@ -49,9 +51,12 @@ async def update_group(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
-    updated = await methods.update_team(conn, team_id, data)
-    if updated is None:
+    team = await methods.get_team_by_id(conn, team_id)
+    if team is None:
         raise HTTPException(status_code=404, detail="Команда не найдена")
+    if not await check_is_teacher_or_admin(conn, user, team["discipline_id"]):
+        raise HTTPException(status_code=403, detail="Только преподаватель курса может редактировать команды")
+    updated = await methods.update_team(conn, team_id, data)
     return updated
 
 
@@ -61,7 +66,10 @@ async def delete_group(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
-    deleted = await methods.delete_team(conn, team_id)
-    if not deleted:
+    team = await methods.get_team_by_id(conn, team_id)
+    if team is None:
         raise HTTPException(status_code=404, detail="Команда не найдена")
+    if not await check_is_teacher_or_admin(conn, user, team["discipline_id"]):
+        raise HTTPException(status_code=403, detail="Только преподаватель курса может удалять команды")
+    deleted = await methods.delete_team(conn, team_id)
     return {"ok": True}

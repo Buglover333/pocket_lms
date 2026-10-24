@@ -315,6 +315,63 @@ class APIContractTests(unittest.TestCase):
         )
         self.assert_error(response, 403)
 
+    def test_cannot_delete_group_without_teacher_permission_returns_403(self):
+        course = self.db.execute(
+            """INSERT INTO disciplines (author_id, title, discipline_type, status, invite_code)
+               VALUES (%s, 'Курс 2', 'module', 'published', %s) RETURNING *""",
+            (self.other["id"], uuid4().hex[:30]),
+        ).fetchone()
+        team = self.db.execute(
+            "INSERT INTO teams (discipline_id, name) VALUES (%s, 'Команда А') RETURNING *",
+            (course["id"],),
+        ).fetchone()
+        response = self.client.delete(
+            "/delete_group",
+            params={"team_id": str(team["id"])},
+            headers=self.headers,
+        )
+        self.assert_error(response, 403)
+
+    def test_cannot_delete_other_user_file_returns_403(self):
+        file_rec = self.db.execute(
+            """INSERT INTO files (uploader_id, file_type, url, file_name)
+               VALUES (%s, 'document', 'http://example.com/doc', 'test.pdf') RETURNING *""",
+            (self.other["id"],),
+        ).fetchone()
+        response = self.client.delete(
+            "/delete_file",
+            params={"file_id": str(file_rec["id"])},
+            headers=self.headers,
+        )
+        self.assert_error(response, 403)
+
+    def test_student_cannot_set_graded_status_on_resubmit_returns_403(self):
+        course = self.db.execute(
+            """INSERT INTO disciplines (author_id, title, discipline_type, status, invite_code)
+               VALUES (%s, 'Курс 3', 'module', 'published', %s) RETURNING *""",
+            (self.other["id"], uuid4().hex[:30]),
+        ).fetchone()
+        lesson = self.db.execute(
+            "INSERT INTO lessons (discipline_id, title) VALUES (%s, 'Урок 1') RETURNING *",
+            (course["id"],),
+        ).fetchone()
+        assignment = self.db.execute(
+            "INSERT INTO assignments (lesson_id, title) VALUES (%s, 'Задание 1') RETURNING *",
+            (lesson["id"],),
+        ).fetchone()
+        sub = self.db.execute(
+            """INSERT INTO submissions (assignment_id, submitted_by, answer_text, status)
+               VALUES (%s, %s, 'Мой ответ', 'submitted') RETURNING *""",
+            (assignment["id"], self.user["id"]),
+        ).fetchone()
+        response = self.client.post(
+            "/resubmit_work",
+            params={"submission_id": str(sub["id"])},
+            json={"status": "graded"},
+            headers=self.headers,
+        )
+        self.assert_error(response, 403)
+
 
 
 if __name__ == "__main__":

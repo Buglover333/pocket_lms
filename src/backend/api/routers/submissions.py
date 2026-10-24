@@ -41,6 +41,13 @@ async def resubmit_work(
         raise HTTPException(status_code=404, detail="Сдача не найдена")
     if submission["submitted_by"] != user["id"] and not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Нельзя изменять чужую работу")
+
+    if data.status and data.status in ("graded", "returned") and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Студент не может менять статус на 'graded' или 'returned'")
+
+    if data.status is None:
+        data = data.model_copy(update={"status": "submitted"})
+
     updated = await methods.update_submission(conn, submission_id, data)
     return updated
 
@@ -70,6 +77,25 @@ async def get_submission_data(
     submission = await methods.get_submission_by_id(conn, submission_id)
     if submission is None:
         raise HTTPException(status_code=404, detail="Сдача не найдена")
+
+    is_author = submission["submitted_by"] == user["id"]
+    is_teammate = False
+    if submission.get("team_id"):
+        team_members = await methods.get_team_members(conn, submission["team_id"])
+        is_teammate = any(m["user_id"] == user["id"] for m in team_members)
+
+    is_teacher = False
+    assignment = await methods.get_assignment_by_id(conn, submission["assignment_id"])
+    if assignment:
+        lesson = await methods.get_lesson_by_id(conn, assignment["lesson_id"])
+        disc_id = lesson["discipline_id"] if lesson else None
+        is_teacher = await check_is_teacher_or_admin(conn, user, disc_id)
+    elif user.get("is_admin"):
+        is_teacher = True
+
+    if not (is_author or is_teammate or is_teacher or user.get("is_admin")):
+        raise HTTPException(status_code=403, detail="Нельзя просматривать чужую работу")
+
     files = await methods.get_files_by_submission(conn, submission_id)
     return {"submission": submission, "files": files}
 

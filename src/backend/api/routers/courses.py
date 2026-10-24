@@ -35,8 +35,20 @@ async def get_course_data(
     course = await methods.get_discipline_by_id(conn, course_id)
     if course is None:
         raise HTTPException(status_code=404, detail="Курс не найден")
+
+    is_teacher = await check_is_teacher_or_admin(conn, user, course_id)
+    members = await methods.get_discipline_members(conn, course_id)
+    is_member = any(m["user_id"] == user["id"] and m.get("status") == "active" for m in members)
+
+    if not (is_teacher or is_member or user.get("is_admin")):
+        raise HTTPException(status_code=403, detail="Вы не являетесь участником этого курса")
+
+    course_data = dict(course)
+    if not is_teacher and not user.get("is_admin"):
+        course_data.pop("invite_code", None)
+
     lessons = await methods.get_lessons_by_discipline(conn, course_id)
-    return {"course": course, "lessons": lessons}
+    return {"course": course_data, "lessons": lessons}
 
 
 @router.post("/create_course", response_model=DisciplineResponse, status_code=status.HTTP_201_CREATED)
@@ -108,5 +120,13 @@ async def get_members(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
-    members = await methods.get_discipline_members_with_profiles(conn, course_id)
-    return {"items": members}
+    course = await methods.get_discipline_by_id(conn, course_id)
+    if course is None:
+        raise HTTPException(status_code=404, detail="Курс не найден")
+    is_teacher = await check_is_teacher_or_admin(conn, user, course_id)
+    members = await methods.get_discipline_members(conn, course_id)
+    is_member = any(m["user_id"] == user["id"] and m.get("status") == "active" for m in members)
+    if not (is_teacher or is_member or user.get("is_admin")):
+        raise HTTPException(status_code=403, detail="Вы не являетесь участником этого курса")
+    profiles = await methods.get_discipline_members_with_profiles(conn, course_id)
+    return {"items": profiles}

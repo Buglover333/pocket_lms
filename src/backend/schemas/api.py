@@ -7,6 +7,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field, field
 
 from backend.schemas.data import (
     DisciplineBase, MemberRole, ModuleBase, UserProfileResponse, UserPublicBase,
+    SubmissionReviewRequest,
 )
 
 
@@ -56,3 +57,61 @@ class ModuleItem(ModuleBase):
 
 class ModulesResponse(BaseModel):
     items: list[ModuleItem]
+
+
+class ProfileSettingsUpdate(BaseModel):
+    """Public self-service fields. Internal UserUpdate also supports password hashes."""
+    model_config = ConfigDict(extra="forbid")
+    first_name: str | None = Field(default=None, min_length=1, max_length=100)
+    last_name: str | None = Field(default=None, min_length=1, max_length=100)
+
+    @field_validator("first_name", "last_name", mode="before")
+    @classmethod
+    def clean_name(cls, value):
+        if value is None:
+            raise ValueError("Имя и фамилия не могут быть пустыми")
+        return value.strip() if isinstance(value, str) else value
+
+
+class GradeSubmissionRequest(SubmissionReviewRequest):
+    """Оценивание; возврат выполняется отдельным /return_submission."""
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["graded"] = "graded"
+    score: float = Field(ge=0, allow_inf_nan=False)
+
+
+class FileUploadRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    file_name: str = Field(min_length=1, max_length=255)
+    file_type: Literal["document", "video", "image", "archive"]
+    mime_type: str = Field(min_length=3, max_length=128, pattern=r"^[\w.+-]+/[\w.+-]+$")
+    size_bytes: int = Field(gt=0, le=50 * 1024 * 1024)
+    lesson_id: UUID | None = None
+    submission_id: UUID | None = None
+
+
+from backend.schemas.data import LessonResponse, FileResponse, SubmissionResponse
+
+class MaterialDataResponse(BaseModel):
+    material: LessonResponse
+    files: list[FileResponse]
+
+class MaterialsResponse(BaseModel):
+    items: list[LessonResponse]
+
+class SubmissionsResponse(BaseModel):
+    items: list[SubmissionResponse]
+
+class SubmissionDataResponse(BaseModel):
+    submission: SubmissionResponse
+    files: list[FileResponse]
+
+class FileUploadResponse(BaseModel):
+    file_id: UUID
+    upload_url: str
+    fields: dict[str, str]
+    expires_in: int
+
+class FileDownloadResponse(BaseModel):
+    download_url: str
+    expires_in: int | None

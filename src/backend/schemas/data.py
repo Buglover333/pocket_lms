@@ -358,6 +358,7 @@ SubmissionStatus = Literal["draft", "submitted", "in_review", "graded", "returne
 
 
 class SubmissionCreateRequest(BaseModel):
+    file_ids: list[UUID] = Field(default_factory=list, max_length=20)
     assignment_id: UUID = Field(..., description="ID задания")
     team_id: UUID | None = Field(None, description="Команда (если задание командное, иначе NULL)")
     submitted_by: UUID = Field(..., description="Студент, который физически отправил работу")
@@ -366,6 +367,7 @@ class SubmissionCreateRequest(BaseModel):
 
 
 class SubmissionUpdateRequest(BaseModel):
+    file_ids: list[UUID] = Field(default_factory=list, max_length=20)
     answer_text: str | None = None
     status: SubmissionStatus | None = None
 

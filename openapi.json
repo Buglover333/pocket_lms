@@ -185,72 +185,6 @@
         }
       }
     },
-    "/get_settings": {
-      "get": {
-        "tags": [
-          "Пользователи"
-        ],
-        "summary": "Get Settings",
-        "operationId": "get_settings_get_settings_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserProfileResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Неверный формат запроса",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Требуется авторизация",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Запрошены данные другого пользователя",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Пользователь не найден",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
     "/update_settings": {
       "patch": {
         "tags": [
@@ -262,7 +196,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UserUpdate"
+                "$ref": "#/components/schemas/ProfileSettingsUpdate"
               }
             }
           },
@@ -1238,9 +1172,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Get Materials Get Materials Get"
+                  "$ref": "#/components/schemas/MaterialsResponse"
                 }
               }
             }
@@ -1318,9 +1250,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Get Material Data Get Material Data Get"
+                  "$ref": "#/components/schemas/MaterialDataResponse"
                 }
               }
             }
@@ -2282,6 +2212,23 @@
               "format": "uuid",
               "title": "Assignment Id"
             }
+          },
+          {
+            "name": "student_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Student Id"
+            }
           }
         ],
         "responses": {
@@ -2290,9 +2237,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Get Submissions Get Submissions Get"
+                  "$ref": "#/components/schemas/SubmissionsResponse"
                 }
               }
             }
@@ -2370,9 +2315,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Get Submission Data Get Submission Data Get"
+                  "$ref": "#/components/schemas/SubmissionDataResponse"
                 }
               }
             }
@@ -2449,7 +2392,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SubmissionReviewRequest"
+                "$ref": "#/components/schemas/GradeSubmissionRequest"
               }
             }
           }
@@ -3290,6 +3233,238 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Delete File Delete File Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется авторизация",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Запрошены данные другого пользователя",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Пользователь не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/create_file_upload": {
+      "post": {
+        "tags": [
+          "Файлы"
+        ],
+        "summary": "Create File Upload",
+        "operationId": "create_file_upload_create_file_upload_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется авторизация",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Запрошены данные другого пользователя",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Пользователь не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/complete_file_upload": {
+      "post": {
+        "tags": [
+          "Файлы"
+        ],
+        "summary": "Complete File Upload",
+        "operationId": "complete_file_upload_complete_file_upload_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "File Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется авторизация",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Запрошены данные другого пользователя",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Пользователь не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get_file_download": {
+      "get": {
+        "tags": [
+          "Файлы"
+        ],
+        "summary": "Get File Download",
+        "operationId": "get_file_download_get_file_download_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "File Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileDownloadResponse"
                 }
               }
             }
@@ -4370,6 +4545,31 @@
         ],
         "title": "FileCreateRequest"
       },
+      "FileDownloadResponse": {
+        "properties": {
+          "download_url": {
+            "type": "string",
+            "title": "Download Url"
+          },
+          "expires_in": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "download_url",
+          "expires_in"
+        ],
+        "title": "FileDownloadResponse"
+      },
       "FileResponse": {
         "properties": {
           "file_type": {
@@ -4499,6 +4699,145 @@
           "created_at"
         ],
         "title": "FileResponse"
+      },
+      "FileUploadRequest": {
+        "properties": {
+          "file_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "File Name"
+          },
+          "file_type": {
+            "type": "string",
+            "enum": [
+              "document",
+              "video",
+              "image",
+              "archive"
+            ],
+            "title": "File Type"
+          },
+          "mime_type": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 3,
+            "pattern": "^[\\w.+-]+/[\\w.+-]+$",
+            "title": "Mime Type"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "maximum": 52428800.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Size Bytes"
+          },
+          "lesson_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lesson Id"
+          },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submission Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "file_name",
+          "file_type",
+          "mime_type",
+          "size_bytes"
+        ],
+        "title": "FileUploadRequest"
+      },
+      "FileUploadResponse": {
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "File Id"
+          },
+          "upload_url": {
+            "type": "string",
+            "title": "Upload Url"
+          },
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Fields"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_id",
+          "upload_url",
+          "fields",
+          "expires_in"
+        ],
+        "title": "FileUploadResponse"
+      },
+      "GradeSubmissionRequest": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "graded",
+            "title": "Status",
+            "default": "graded"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Score"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback",
+            "description": "Рецензия / разбор ошибок преподавателем"
+          },
+          "grader_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Grader Id",
+            "description": "Преподаватель, выставивший оценку"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "score",
+          "grader_id"
+        ],
+        "title": "GradeSubmissionRequest",
+        "description": "Оценивание; возврат выполняется отдельным /return_submission."
       },
       "LessonCreateRequest": {
         "properties": {
@@ -4665,6 +5004,42 @@
         },
         "type": "object",
         "title": "LessonUpdateRequest"
+      },
+      "MaterialDataResponse": {
+        "properties": {
+          "material": {
+            "$ref": "#/components/schemas/LessonResponse"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FileResponse"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "material",
+          "files"
+        ],
+        "title": "MaterialDataResponse"
+      },
+      "MaterialsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LessonResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "MaterialsResponse"
       },
       "ModuleCreateRequest": {
         "properties": {
@@ -4856,8 +5231,51 @@
         ],
         "title": "ModulesResponse"
       },
+      "ProfileSettingsUpdate": {
+        "properties": {
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ProfileSettingsUpdate",
+        "description": "Public self-service fields. Internal UserUpdate also supports password hashes."
+      },
       "SubmissionCreateRequest": {
         "properties": {
+          "file_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "File Ids"
+          },
           "assignment_id": {
             "type": "string",
             "format": "uuid",
@@ -4915,6 +5333,26 @@
           "submitted_by"
         ],
         "title": "SubmissionCreateRequest"
+      },
+      "SubmissionDataResponse": {
+        "properties": {
+          "submission": {
+            "$ref": "#/components/schemas/SubmissionResponse"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FileResponse"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "submission",
+          "files"
+        ],
+        "title": "SubmissionDataResponse"
       },
       "SubmissionResponse": {
         "properties": {
@@ -5058,59 +5496,17 @@
         ],
         "title": "SubmissionResponse"
       },
-      "SubmissionReviewRequest": {
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "graded",
-              "returned"
-            ],
-            "title": "Status",
-            "description": "graded (оценено) | returned (на доработку)"
-          },
-          "score": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Score",
-            "description": "Итоговый балл (обязателен при status='graded')"
-          },
-          "feedback": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Feedback",
-            "description": "Рецензия / разбор ошибок преподавателем"
-          },
-          "grader_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Grader Id",
-            "description": "Преподаватель, выставивший оценку"
-          }
-        },
-        "type": "object",
-        "required": [
-          "status",
-          "grader_id"
-        ],
-        "title": "SubmissionReviewRequest",
-        "description": "Оценивание работы или возврат на доработку преподавателем."
-      },
       "SubmissionUpdateRequest": {
         "properties": {
+          "file_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "File Ids"
+          },
           "answer_text": {
             "anyOf": [
               {
@@ -5143,6 +5539,22 @@
         },
         "type": "object",
         "title": "SubmissionUpdateRequest"
+      },
+      "SubmissionsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SubmissionResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "SubmissionsResponse"
       },
       "TeamCreateRequest": {
         "properties": {
@@ -5417,65 +5829,6 @@
         ],
         "title": "UserRegister",
         "description": "Public registration input, including password confirmation."
-      },
-      "UserUpdate": {
-        "properties": {
-          "email": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 255,
-                "minLength": 3
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email"
-          },
-          "password_hash": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 255,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Password Hash"
-          },
-          "first_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Name"
-          },
-          "last_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Name"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "UserUpdate",
-        "description": "Fields that may be changed; a raw password is never accepted here."
       }
     },
     "securitySchemes": {

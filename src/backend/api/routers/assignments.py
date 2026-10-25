@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from backend.api.dependencies import AuthUser, Connection, check_is_teacher_or_admin
 from backend.api.errors import PROTECTED_ERRORS
+from backend.api.access import course_access, material_access, assignment_access
 from backend.db import methods
 from backend.schemas.data import (
     AssignmentCreateRequest,
@@ -23,8 +24,20 @@ async def get_assignments(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
+    _, staff = await material_access(conn, user, lesson_id)
     assignments = await methods.get_assignments_by_lesson(conn, lesson_id)
-    return {"items": assignments}
+    visible = []
+    for item in assignments:
+        if staff:
+            visible.append(item)
+            continue
+        try:
+            await assignment_access(conn, user, item["id"])
+            visible.append(item)
+        except HTTPException as exc:
+            if exc.status_code != 403:
+                raise
+    return {"items": visible}
 
 
 @router.get("/get_assignment_data")
@@ -33,10 +46,8 @@ async def get_assignment_data(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
-    assignment = await methods.get_assignment_by_id(conn, assignment_id)
-    if assignment is None:
-        raise HTTPException(status_code=404, detail="Задание не найдено")
-    targets = await methods.get_assignment_targets(conn, assignment_id)
+    assignment, _, staff = await assignment_access(conn, user, assignment_id)
+    targets = await methods.get_assignment_targets(conn, assignment_id) if staff else []
     return {"assignment": assignment, "targets": targets}
 
 
@@ -47,7 +58,9 @@ async def create_assignment(
     conn: Connection,
 ) -> dict[str, Any]:
     lesson = await methods.get_lesson_by_id(conn, data.lesson_id)
-    disc_id = lesson["discipline_id"] if lesson else None
+    if lesson is None:
+        raise HTTPException(404, "Материал не найден")
+    disc_id = lesson["discipline_id"]
     if not await check_is_teacher_or_admin(conn, user, disc_id):
         raise HTTPException(status_code=403, detail="Только преподаватель курса может создавать задания")
     return await methods.create_assignment(conn, data)
@@ -64,7 +77,9 @@ async def update_assignment(
     if assignment is None:
         raise HTTPException(status_code=404, detail="Задание не найдено")
     lesson = await methods.get_lesson_by_id(conn, assignment["lesson_id"])
-    disc_id = lesson["discipline_id"] if lesson else None
+    if lesson is None:
+        raise HTTPException(404, "Материал не найден")
+    disc_id = lesson["discipline_id"]
     if not await check_is_teacher_or_admin(conn, user, disc_id):
         raise HTTPException(status_code=403, detail="Только преподаватель курса может редактировать задания")
     updated = await methods.update_assignment(conn, assignment_id, data)
@@ -81,7 +96,9 @@ async def delete_assignment(
     if assignment is None:
         raise HTTPException(status_code=404, detail="Задание не найдено")
     lesson = await methods.get_lesson_by_id(conn, assignment["lesson_id"])
-    disc_id = lesson["discipline_id"] if lesson else None
+    if lesson is None:
+        raise HTTPException(404, "Материал не найден")
+    disc_id = lesson["discipline_id"]
     if not await check_is_teacher_or_admin(conn, user, disc_id):
         raise HTTPException(status_code=403, detail="Только преподаватель курса может удалять задания")
     deleted = await methods.delete_assignment(conn, assignment_id)
@@ -94,5 +111,17 @@ async def get_calendar(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
+    _, staff, _ = await course_access(conn, user, course_id)
     deadlines = await methods.get_discipline_deadlines(conn, course_id)
-    return {"items": deadlines}
+    visible = []
+    for item in deadlines:
+        if staff:
+            visible.append(item)
+            continue
+        try:
+            await assignment_access(conn, user, item["id"])
+            visible.append(item)
+        except HTTPException as exc:
+            if exc.status_code != 403:
+                raise
+    return {"items": visible}

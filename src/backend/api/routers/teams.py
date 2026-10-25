@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from backend.api.dependencies import AuthUser, Connection, check_is_teacher_or_admin
 from backend.api.errors import PROTECTED_ERRORS
+from backend.api.access import course_access
 from backend.db import methods
 from backend.schemas.data import TeamCreateRequest, TeamResponse, TeamUpdateRequest
 
@@ -19,6 +20,7 @@ async def get_groups(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
+    await course_access(conn, user, course_id)
     teams = await methods.get_teams_by_discipline(conn, course_id)
     return {"items": teams}
 
@@ -40,6 +42,10 @@ async def get_team_members(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
+    team = await methods.get_team_by_id(conn, team_id)
+    if team is None:
+        raise HTTPException(404, "Команда не найдена")
+    await course_access(conn, user, team["discipline_id"])
     members = await methods.get_team_members(conn, team_id)
     return {"items": members}
 

@@ -1,0 +1,49 @@
+АКТУАЛЬНЫЕ МАРШРУТЫ ЛОКАЛЬНОЙ КОПИИ API — 25.10.2026
+
+POST /register — Регистрация нового пользователя
+POST /auth — Вход пользователя (получение токена)
+GET /get_user_info — Профиль пользователя
+PATCH /update_settings — Изменение своего имени и фамилии
+GET /get_courses — Курсы текущего пользователя
+GET /get_course_data — Данные курса и список уроков
+POST /create_course — Создание курса
+PATCH /update_course — Редактирование курса
+POST /create_invitation — Генерация/получение кода приглашения
+POST /accept_invitation — Запись на курс по инвайт-коду
+GET /get_members — Список участников курса
+GET /get_modules — Список модулей пользователя
+GET /get_module_data — Данные модуля и его дисциплины
+POST /create_module — Создание модуля
+PATCH /update_module — Редактирование модуля
+GET /get_materials — Материалы/уроки курса
+GET /get_material_data — Содержимое урока и вложения
+POST /create_material — Создание урока/материала
+PATCH /update_material — Редактирование урока
+DELETE /delete_material — Удаление урока
+GET /get_assignments — Список заданий к уроку
+GET /get_assignment_data — Детали задания, критерии, таргеты
+POST /create_assignment — Создание задания
+PATCH /update_assignment — Редактирование задания
+DELETE /delete_assignment — Удаление задания
+GET /get_calendar — Дедлайны по курсу
+POST /submit_work — Сдача решения задания
+POST /resubmit_work — Повторная сдача работы
+GET /get_submissions — Сдачи выбранного студента по заданию (свои по умолчанию)
+GET /get_submission_data — Детали сдачи и файлы
+POST /grade_submission — Оценивание и фидбек
+POST /return_submission — Возврат работы на доработку
+GET /get_grades — Табель оценок студента
+GET /get_groups — Команды курса
+POST /create_group — Создание команды
+GET /get_team_members — Участники команды
+PATCH /update_group — Редактирование команды
+DELETE /delete_group — Удаление команды
+POST /upload_file — Регистрация внешней HTTP-ссылки
+GET /get_file — Получение метаданных файла
+DELETE /delete_file — Удаление файла
+POST /create_file_upload — Подготовка загрузки в S3: JSON → подписанная форма
+POST /complete_file_upload — Подтверждение загрузки после S3 HEAD
+GET /get_file_download — Временная ссылка на файл после проверки доступа
+POST /app — Отдать frontend приложения
+
+Подробные типы и примеры: API_CONTRACT_REVIEW.md. Ветка: endpoints.

@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from backend.api.dependencies import AuthUser, Connection, CurrentUser, check_is_teacher_or_admin
 from backend.api.errors import PROTECTED_ERRORS
+from backend.api.access import course_access
 from backend.db import methods
 from backend.schemas.api import CoursesResponse
 from backend.schemas.data import (
@@ -32,23 +33,14 @@ async def get_course_data(
     user: AuthUser = None,
     conn: Connection = None,
 ) -> dict[str, Any]:
-    course = await methods.get_discipline_by_id(conn, course_id)
-    if course is None:
-        raise HTTPException(status_code=404, detail="Курс не найден")
-
-    is_teacher = await check_is_teacher_or_admin(conn, user, course_id)
-    members = await methods.get_discipline_members(conn, course_id)
-    is_member = any(m["user_id"] == user["id"] and m.get("status") == "active" for m in members)
-
-    if not (is_teacher or is_member or user.get("is_admin")):
-        raise HTTPException(status_code=403, detail="Вы не являетесь участником этого курса")
+    course, is_teacher, _ = await course_access(conn, user, course_id)
 
     course_data = dict(course)
     if not is_teacher and not user.get("is_admin"):
         course_data.pop("invite_code", None)
 
     lessons = await methods.get_lessons_by_discipline(conn, course_id)
-    return {"course": course_data, "lessons": lessons}
+    return {"course": course_data, "lessons": lessons if is_teacher else [x for x in lessons if x["is_published"]]}
 
 
 @router.post("/create_course", response_model=DisciplineResponse, status_code=status.HTTP_201_CREATED)

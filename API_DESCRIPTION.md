@@ -1,5 +1,7 @@
 # API Pocket LMS
 
+> Локальная правка 25.10.2026: подробные типы/примеры — API_CONTRACT_REVIEW.md; сверка с БД и ограничения — docs/REVIEW_2026-10-25.md. Подготовлено для ветки endpoints.
+
 Базовый формат обмена данными — JSON. Все идентификаторы имеют тип UUID.
 
 ## Сводная таблица всех эндпоинтов по роутерам
@@ -9,8 +11,7 @@
 | **auth / users** | `POST` | `/register` | Регистрация нового пользователя | `users` | Нет |
 | **auth / users** | `POST` | `/auth` | Вход пользователя (получение токена) | `users` | Нет |
 | **auth / users** | `GET` | `/get_user_info` | Профиль пользователя | `users` | Bearer |
-| **auth / users** | `GET` | `/get_settings` | Настройки пользователя | `users` | Bearer |
-| **auth / users** | `PATCH` | `/update_settings` | Обновление настроек/профиля | `users` | Bearer |
+| **auth / users** | `PATCH` | `/update_settings` | Изменение своего имени и фамилии | `users` | Bearer |
 | **modules** | `GET` | `/get_modules` | Список модулей пользователя | `modules`, `disciplines`, `discipline_members` | Bearer |
 | **modules** | `GET` | `/get_module_data` | Данные модуля и его дисциплины | `modules`, `disciplines` | Bearer |
 | **modules** | `POST` | `/create_module` | Создание модуля | `modules` | Bearer |
@@ -28,14 +29,14 @@
 | **lessons** | `PATCH` | `/update_material` | Редактирование урока | `lessons` | Bearer |
 | **lessons** | `DELETE` | `/delete_material` | Удаление урока | `lessons` | Bearer |
 | **assignments** | `GET` | `/get_assignments` | Список заданий к уроку | `assignments` | Bearer |
-| **assignments** | `GET` | `/get_assignment_data` | Детали задания, критерии, таргеты | `assignments`, `assignment_targets` | Bearer |
+| **assignments** | `GET` | `/get_assignment_data` | Детали задания, критерии, таргеты | `assignments` | Bearer |
 | **assignments** | `POST` | `/create_assignment` | Создание задания | `assignments`, `assignment_targets` | Bearer |
 | **assignments** | `PATCH` | `/update_assignment` | Редактирование задания | `assignments` | Bearer |
 | **assignments** | `DELETE` | `/delete_assignment` | Удаление задания | `assignments` | Bearer |
 | **assignments** | `GET` | `/get_calendar` | Дедлайны по курсу | `assignments`, `lessons` | Bearer |
 | **submissions** | `POST` | `/submit_work` | Сдача решения задания | `submissions` | Bearer |
 | **submissions** | `POST` | `/resubmit_work` | Повторная сдача работы | `submissions` | Bearer |
-| **submissions** | `GET` | `/get_submissions` | Список работ по заданию (преподаватель) | `submissions`, `users` | Bearer |
+| **submissions** | `GET` | `/get_submissions` | Сдачи выбранного студента по заданию (свои по умолчанию) | `submissions`, `users` | Bearer |
 | **submissions** | `GET` | `/get_submission_data` | Детали сдачи и файлы | `submissions`, `files` | Bearer |
 | **submissions** | `POST` | `/grade_submission` | Оценивание и фидбек | `submissions` | Bearer |
 | **submissions** | `POST` | `/return_submission` | Возврат работы на доработку | `submissions` | Bearer |
@@ -45,8 +46,11 @@
 | **teams** | `GET` | `/get_team_members` | Участники команды | `discipline_members`, `users` | Bearer |
 | **teams** | `PATCH` | `/update_group` | Редактирование команды | `teams` | Bearer |
 | **teams** | `DELETE` | `/delete_group` | Удаление команды | `teams` | Bearer |
-| **files** | `POST` | `/upload_file` | Загрузка/регистрация файла | `files` | Bearer |
+| **files** | `POST` | `/upload_file` | Регистрация внешней HTTP-ссылки | `files` | Bearer |
 | **files** | `GET` | `/get_file` | Получение метаданных файла | `files` | Bearer |
+| **files** | `POST` | `/create_file_upload` | Подготовка загрузки в S3: JSON → подписанная форма | `files` | Bearer |
+| **files** | `POST` | `/complete_file_upload` | Подтверждение загрузки после S3 HEAD | `files` | Bearer |
+| **files** | `GET` | `/get_file_download` | Временная ссылка на файл после проверки доступа | `files` | Bearer |
 | **files** | `DELETE` | `/delete_file` | Удаление файла | `files` | Bearer |
 | **frontend** | `POST` | `/app` | Отдать frontend приложения | Нет | Нет |
 
@@ -78,3 +82,11 @@ Authorization: Bearer <access_token>
 
 Обработчики HTTP-запросов вызывают исключительно готовые методы сервисного слоя из `backend.db.methods`.
 Прямое обращение к базе данных или выполнение сырого SQL внутри роутеров запрещено и контролируется автоматическими архитектурными тестами (`tests/test_api_architecture.py`).
+
+## Уточнения контракта 25.10.2026
+
+- Профиль читает только GET /get_user_info?user_id=…; ID должен совпадать с токеном. get_settings удалён как дубликат. PATCH /update_settings принимает только first_name и last_name.
+- GET /get_course_data уже содержит доступные lessons. GET /get_materials отдельно обновляет этот список; при первом открытии не требуется делать оба запроса.
+- POST /grade_submission принимает только graded (можно не указывать status), обязательные score и grader_id. Вызвавший преподаватель определяется токеном; score от 0 до max_score. Возврат — POST /return_submission.
+- Все четыре DELETE сохранены. /delete_file удаляет запись; физическая очистка S3 требует отдельной процедуры.
+- Таймер публикации, персональные получатели материалов и остальные разрывы юзер-флоу перечислены в docs/REVIEW_2026-10-25.md; эти возможности ещё не реализованы.

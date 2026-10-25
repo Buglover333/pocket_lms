@@ -750,12 +750,24 @@ async def get_user_submissions(
 ) -> list[dict]:
     """История попыток сдачи конкретного студента по заданию."""
     query = """
-        SELECT * FROM submissions
-        WHERE submitted_by = %s AND assignment_id = %s
-        ORDER BY attempt_number DESC;
+        SELECT s.* FROM submissions s
+        WHERE s.assignment_id = %s AND (
+            s.submitted_by = %s OR (
+                s.team_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM discipline_members dm
+                    JOIN teams t ON t.id = dm.team_id
+                    JOIN assignments a ON a.id = s.assignment_id
+                    JOIN lessons l ON l.id = a.lesson_id
+                    WHERE dm.user_id = %s AND dm.status = 'active'
+                        AND dm.team_id = s.team_id
+                        AND dm.discipline_id = l.discipline_id
+                        AND t.discipline_id = l.discipline_id
+                )
+            )
+        ) ORDER BY s.attempt_number DESC, s.submitted_at DESC;
     """
     async with conn.cursor(row_factory=dict_row) as cur:
-        await cur.execute(query, (user_id, assignment_id))
+        await cur.execute(query, (assignment_id, user_id, user_id))
         return await cur.fetchall()
 
 
@@ -768,12 +780,25 @@ async def get_student_discipline_grades(
                s.id AS submission_id, s.status, s.score, s.feedback, s.graded_at, s.attempt_number
         FROM assignments a
         JOIN lessons l ON a.lesson_id = l.id
-        LEFT JOIN submissions s ON s.assignment_id = a.id AND s.submitted_by = %s
-        WHERE l.discipline_id = %s AND a.is_published = TRUE
+        LEFT JOIN submissions s ON s.assignment_id = a.id AND (
+            s.submitted_by = %s OR (s.team_id IS NOT NULL AND EXISTS (
+                SELECT 1 FROM discipline_members dm JOIN teams t ON t.id = dm.team_id
+                WHERE dm.user_id = %s AND dm.status = 'active'
+                  AND dm.team_id = s.team_id AND dm.discipline_id = l.discipline_id
+                  AND t.discipline_id = l.discipline_id
+            ))
+        )
+        WHERE l.discipline_id = %s AND a.is_published = TRUE AND l.is_published = TRUE
+          AND (a.target_type = 'all' OR EXISTS (
+              SELECT 1 FROM assignment_targets atg
+              JOIN discipline_members target ON target.id = atg.member_id
+              WHERE atg.assignment_id = a.id AND target.user_id = %s
+                AND target.discipline_id = l.discipline_id AND target.status = 'active'
+          ))
         ORDER BY l.order_index, a.created_at;
     """
     async with conn.cursor(row_factory=dict_row) as cur:
-        await cur.execute(query, (user_id, discipline_id))
+        await cur.execute(query, (user_id, user_id, discipline_id, user_id))
         return await cur.fetchall()
 
 
@@ -781,7 +806,7 @@ async def update_submission(
     conn: psycopg.AsyncConnection, submission_id: UUID, data: SubmissionUpdateRequest
 ) -> dict | None:
     """Обновление черновика сдачи работы."""
-    update_data = data.model_dump(exclude_unset=True)
+    update_data = data.model_dump(exclude_unset=True, exclude={"file_ids"})
     if not update_data:
         return await get_submission_by_id(conn, submission_id)
 
@@ -862,3 +887,33 @@ async def delete_file(conn: psycopg.AsyncConnection, file_id: UUID) -> bool:
     async with conn.cursor() as cur:
         await cur.execute(query, (file_id,))
         return cur.rowcount > 0
+
+
+async def complete_file_upload(conn, file_id: UUID) -> dict | None:
+    """Only the server confirms that a reserved S3 object has been uploaded."""
+    query = """UPDATE files SET meta = jsonb_set(meta, '{upload_status}', '\"ready\"'::jsonb)
+               WHERE id = %s AND meta->>'storage' = 's3' RETURNING *"""
+    async with conn.cursor(row_factory=dict_row) as cur:
+        await cur.execute(query, (file_id,))
+        return await cur.fetchone()
+
+
+async def lock_submission_files(conn, file_ids, user_id, submission_id=None):
+    """Lock before validating ownership so two submissions cannot claim one file."""
+    if not file_ids:
+        return True
+    async with conn.cursor(row_factory=dict_row) as cur:
+        await cur.execute("SELECT * FROM files WHERE id = ANY(%s) ORDER BY id FOR UPDATE", (file_ids,))
+        rows = await cur.fetchall()
+    return len(rows) == len(file_ids) and all(
+        r['uploader_id'] == user_id and r['lesson_id'] is None
+        and (r['submission_id'] is None or r['submission_id'] == submission_id)
+        and ((r.get('meta') or {}).get('storage') != 's3'
+             or (r.get('meta') or {}).get('upload_status') == 'ready')
+        for r in rows)
+
+
+async def attach_submission_files(conn, file_ids, submission_id):
+    if file_ids:
+        async with conn.cursor() as cur:
+            await cur.execute("UPDATE files SET submission_id = %s WHERE id = ANY(%s)", (submission_id, file_ids))

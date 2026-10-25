@@ -1,7 +1,6 @@
 # Pocket LMS API
 
-Контракт эндпоинтов находится в API_DESCRIPTION.md. Реализованы POST /app, POST /auth,
-POST /register, GET /get_courses, GET /get_modules и GET /get_user_info.
+Реализованы авторизация, профиль, курсы, модули, материалы, задания, сдачи, оценки, команды и файлы. Полный перечень маршрутов — docs/ENDPOINTS.txt, типы и примеры — API_CONTRACT_REVIEW.md и openapi.json.
 
 ## Локальный запуск
 
@@ -82,7 +81,9 @@ tests/test_crud.py учитывает TEST_DATABASE_URL; без этой пер�
 Включены изменения CRUD-слоя из коммита 352b8b6 ветки feature/db-schema-and-crud.
 
 - src/backend/api/main.py — только сборка приложения и подключение роутеров.
-- src/backend/api/routers/ — регистрация и вход, профиль, курсы, модули, frontend.
+- src/backend/api/routers/ — HTTP-обработчики всех перечисленных разделов.
+- src/backend/api/access.py — общие проверки доступа к объектам.
+- src/backend/services/storage.py — приватное S3-хранилище.
 - src/backend/api/dependencies.py — получение подключения и проверка текущего пользователя.
 - src/backend/api/security.py — хеширование паролей и JWT.
 - src/backend/db/connection.py — подключение к PostgreSQL и границы транзакции.
@@ -99,3 +100,8 @@ active_only=True. Из внутренних результатов в публи
 HTTP-контракт API_DESCRIPTION.md сохранён, включая POST /app, старые адреса
 /get_* и параметр user_id. Переименование адресов и получение user_id только
 из токена требуют отдельного согласования контракта командой.
+
+
+## Локальная проверка 25.10.2026
+
+Исправления подготовлены для ветки endpoints; публикация на GitHub выполняется отдельно. См. docs/REVIEW_2026-10-25.md, API_CONTRACT_REVIEW.md и TEST_RESULTS_REVIEW.md. Публичное обновление профиля ограничено именем и фамилией. Список сдач ограничен выбранным студентом. Для файлов S3 используется create_file_upload → отправка формы в хранилище → complete_file_upload → get_file_download. Для S3 нужны bucket, IAM credentials/роль и CORS провайдера; настоящие ключи не входят в проект.

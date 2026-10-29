@@ -3052,6 +3052,7 @@
           "Файлы"
         ],
         "summary": "Upload File",
+        "description": "Регистрация внешней ссылки на файл (не S3).",
         "operationId": "upload_file_upload_file_post",
         "requestBody": {
           "content": {
@@ -3128,6 +3129,7 @@
           "Файлы"
         ],
         "summary": "Get File",
+        "description": "Получение метаданных файла.",
         "operationId": "get_file_get_file_get",
         "security": [
           {
@@ -3206,6 +3208,7 @@
           "Файлы"
         ],
         "summary": "Delete File",
+        "description": "Удаление файла из базы данных и физическое удаление из S3 (если файл хранился в S3).",
         "operationId": "delete_file_delete_file_delete",
         "security": [
           {
@@ -3286,6 +3289,7 @@
           "Файлы"
         ],
         "summary": "Create File Upload",
+        "description": "Инициализация загрузки файла в S3 (получение presigned POST url).",
         "operationId": "create_file_upload_create_file_upload_post",
         "requestBody": {
           "content": {
@@ -3362,6 +3366,7 @@
           "Файлы"
         ],
         "summary": "Complete File Upload",
+        "description": "Подтверждение загрузки в S3 после завершения передачи клиентом.",
         "operationId": "complete_file_upload_complete_file_upload_post",
         "security": [
           {
@@ -3440,6 +3445,7 @@
           "Файлы"
         ],
         "summary": "Get File Download",
+        "description": "Получение presigned ссылки на скачивание файла из S3.",
         "operationId": "get_file_download_get_file_download_get",
         "security": [
           {

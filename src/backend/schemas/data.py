@@ -1,18 +1,37 @@
 from datetime import date, datetime
+import secrets
 import re
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 
 # ==============================================================================
 # 1. СХЕМЫ МОДУЛЕЙ (Таблица modules)
 # ==============================================================================
 
+
 class ModuleBase(BaseModel):
-    title: str = Field(..., max_length=255, description="Название образовательного модуля")
+    title: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="Название образовательного модуля",
+    )
     description: str | None = Field(None, description="Описание программы модуля")
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def clean_title(cls, value):
+        return value.strip() if isinstance(value, str) else value
 
 
 class ModuleCreateRequest(ModuleBase):
@@ -20,9 +39,18 @@ class ModuleCreateRequest(ModuleBase):
 
 
 class ModuleUpdateRequest(BaseModel):
-    title: str | None = Field(None, max_length=255, description="Название образовательного модуля")
+    title: str | None = Field(
+        None, max_length=255, description="Название образовательного модуля"
+    )
     description: str | None = Field(None, description="Описание программы модуля")
     curator_id: UUID | None = Field(None, description="ID пользователя-куратора модуля")
+
+    @field_validator("title", "curator_id", mode="before")
+    @classmethod
+    def required_value(cls, value):
+        if value is None or (isinstance(value, str) and not value.strip()):
+            raise ValueError("Поле не может быть пустым")
+        return value.strip() if isinstance(value, str) else value
 
 
 class ModuleResponse(ModuleBase):
@@ -43,27 +71,61 @@ DisciplineStatus = Literal["draft", "published", "archived"]
 
 
 class DisciplineBase(BaseModel):
-    title: str = Field(..., max_length=255, description="Название курса/предмета")
-    discipline_type: DisciplineType = Field(default="module", description="Тип: модуль программы, общевузовский, электив")
-    status: DisciplineStatus = Field(default="draft", description="Статус: черновик, опубликован, архив")
+    title: str = Field(
+        ..., min_length=1, max_length=255, description="Название курса/предмета"
+    )
+    discipline_type: DisciplineType = Field(
+        default="module", description="Тип: модуль программы, общевузовский, электив"
+    )
+    status: DisciplineStatus = Field(
+        default="draft", description="Статус: черновик, опубликован, архив"
+    )
     description: str | None = Field(None, description="Описание курса и требований")
-    ends_at: date | None = Field(None, description="Дата окончания курса для авто-архивации")
+    ends_at: date | None = Field(
+        None, description="Дата окончания курса для авто-архивации"
+    )
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def clean_title(cls, value):
+        return value.strip() if isinstance(value, str) else value
 
 
 class DisciplineCreateRequest(DisciplineBase):
-    author_id: UUID = Field(..., description="ID создателя курса (защита от курсов-сирот)")
-    invite_code: str = Field(..., max_length=32, description="Уникальный код для записи на курс")
-    module_id: UUID | None = Field(None, description="ID модуля (NULL для общевузовских дисциплин и свободных элективов)")
-    cover_file_id: UUID | None = Field(None, description="ID файла обложки из таблицы files")
+    author_id: UUID = Field(
+        ..., description="ID создателя курса (защита от курсов-сирот)"
+    )
+    invite_code: str = Field(
+        default_factory=lambda: secrets.token_urlsafe(24),
+        min_length=1,
+        max_length=32,
+        description="Совместимое поле курса; для записи создайте отдельное приглашение",
+    )
+    module_id: UUID | None = Field(
+        None,
+        description="ID модуля (NULL для общевузовских дисциплин и свободных элективов)",
+    )
+    cover_file_id: UUID | None = Field(
+        None, description="ID файла обложки из таблицы files"
+    )
 
 
 class DisciplineUpdateRequest(BaseModel):
-    title: str | None = Field(None, max_length=255, description="Название курса/предмета")
+    title: str | None = Field(
+        None, max_length=255, description="Название курса/предмета"
+    )
     discipline_type: DisciplineType | None = Field(None, description="Тип дисциплины")
     status: DisciplineStatus | None = Field(None, description="Статус курса")
     description: str | None = Field(None, description="Описание курса")
     cover_file_id: UUID | None = Field(None, description="ID обложки курса")
     ends_at: date | None = Field(None, description="Дата окончания курса")
+
+    @field_validator("title", "discipline_type", "status", mode="before")
+    @classmethod
+    def required_value(cls, value):
+        if value is None or (isinstance(value, str) and not value.strip()):
+            raise ValueError("Поле не может быть пустым")
+        return value.strip() if isinstance(value, str) else value
 
 
 class DisciplineResponse(DisciplineBase):
@@ -88,7 +150,20 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 class UserRegister(BaseModel):
     """Public registration input, including password confirmation."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "email": "student@example.com",
+                    "first_name": "Анна",
+                    "last_name": "Иванова",
+                    "password": "ExamplePass123",
+                    "password_confirm": "ExamplePass123",
+                }
+            ]
+        },
+    )
 
     email: EmailStr = Field(max_length=255)
     first_name: str = Field(min_length=1, max_length=100)
@@ -161,7 +236,10 @@ class UserUpdate(BaseModel):
     @model_validator(mode="after")
     def reject_null_required_fields(self) -> "UserUpdate":
         for field_name in ("email", "password_hash", "first_name", "last_name"):
-            if field_name in self.model_fields_set and getattr(self, field_name) is None:
+            if (
+                field_name in self.model_fields_set
+                and getattr(self, field_name) is None
+            ):
                 raise ValueError(f"Поле {field_name} не может быть пустым")
         return self
 
@@ -195,9 +273,12 @@ class UserProfileResponse(UserResponse):
 # 4. СХЕМЫ КОМАНД (Таблица teams)
 # ==============================================================================
 
+
 class TeamBase(BaseModel):
     name: str = Field(..., max_length=100, description="Название команды")
-    description: str | None = Field(None, description="Описание командного проекта / тема")
+    description: str | None = Field(
+        None, description="Описание командного проекта / тема"
+    )
 
 
 class TeamCreateRequest(TeamBase):
@@ -226,9 +307,15 @@ MemberStatus = Literal["active", "invited", "left"]
 
 
 class DisciplineMemberBase(BaseModel):
-    role: MemberRole = Field(default="student", description="Роль: owner | teacher | student")
-    status: MemberStatus = Field(default="active", description="Статус: active | invited | left")
-    team_id: UUID | None = Field(None, description="В какой команде состоит студент на этом курсе")
+    role: MemberRole = Field(
+        default="student", description="Роль: owner | teacher | student"
+    )
+    status: MemberStatus = Field(
+        default="active", description="Статус: active | invited | left"
+    )
+    team_id: UUID | None = Field(
+        None, description="В какой команде состоит студент на этом курсе"
+    )
 
 
 class DisciplineMemberCreateRequest(DisciplineMemberBase):
@@ -253,6 +340,7 @@ class DisciplineMemberResponse(DisciplineMemberBase):
 
 class DisciplineMemberProfileResponse(DisciplineMemberResponse):
     """Расширенный профиль участника с контактными данными из users (для раздела Контакты)."""
+
     email: str | None = None
     first_name: str | None = None
     last_name: str | None = None
@@ -263,8 +351,9 @@ class DisciplineMemberProfileResponse(DisciplineMemberResponse):
 # 6. СХЕМЫ УРОКОВ (Таблица lessons)
 # ==============================================================================
 
+
 class LessonBase(BaseModel):
-    title: str = Field(..., max_length=255, description="Тема занятия")
+    title: str = Field(..., min_length=1, max_length=255, description="Тема занятия")
     order_index: int = Field(default=0, description="Порядковый номер занятия")
     content_markdown: str | None = Field(None, description="Конспект лекции в Markdown")
     is_published: bool = Field(default=True, description="Опубликован ли урок")
@@ -282,6 +371,7 @@ class LessonUpdateRequest(BaseModel):
 
 
 class LessonResponse(LessonBase):
+    created_by: UUID | None = None
     id: UUID
     discipline_id: UUID
     created_at: datetime
@@ -298,13 +388,21 @@ AssignmentTargetType = Literal["all", "selective"]
 
 
 class AssignmentBase(BaseModel):
-    title: str = Field(..., max_length=255, description="Название задания / лабораторной")
+    title: str = Field(
+        ..., min_length=1, max_length=255, description="Название задания / лабораторной"
+    )
     description_markdown: str = Field(..., description="ТЗ и требования в Markdown")
-    target_type: AssignmentTargetType = Field(default="all", description="all (всем) | selective (выборочно)")
-    is_team_work: bool = Field(default=False, description="Командное задание (True) или индивидуальное (False)")
+    target_type: AssignmentTargetType = Field(
+        default="all", description="all (всем) | selective (выборочно)"
+    )
+    is_team_work: bool = Field(
+        default=False, description="Командное задание (True) или индивидуальное (False)"
+    )
     max_score: int = Field(default=100, gt=0, description="Максимальный балл (> 0)")
     due_date: datetime | None = Field(None, description="Дедлайн сдачи")
-    template_file_id: UUID | None = Field(None, description="Шаблон / методичка из files")
+    template_file_id: UUID | None = Field(
+        None, description="Шаблон / методичка из files"
+    )
     is_published: bool = Field(default=True, description="Опубликовано ли задание")
 
 
@@ -324,6 +422,7 @@ class AssignmentUpdateRequest(BaseModel):
 
 
 class AssignmentResponse(AssignmentBase):
+    created_by: UUID | None = None
     id: UUID
     lesson_id: UUID
     created_at: datetime
@@ -335,6 +434,7 @@ class AssignmentResponse(AssignmentBase):
 # ==============================================================================
 # 8. СХЕМЫ ПЕРСОНАЛЬНОЙ ВЫДАЧИ ЗАДАНИЙ (Таблица assignment_targets)
 # ==============================================================================
+
 
 class AssignmentTargetCreateRequest(BaseModel):
     assignment_id: UUID = Field(..., description="ID задания")
@@ -360,9 +460,15 @@ SubmissionStatus = Literal["draft", "submitted", "in_review", "graded", "returne
 class SubmissionCreateRequest(BaseModel):
     file_ids: list[UUID] = Field(default_factory=list, max_length=20)
     assignment_id: UUID = Field(..., description="ID задания")
-    team_id: UUID | None = Field(None, description="Команда (если задание командное, иначе NULL)")
-    submitted_by: UUID = Field(..., description="Студент, который физически отправил работу")
-    answer_text: str | None = Field(None, description="Текстовый ответ / комментарий к сдаче")
+    team_id: UUID | None = Field(
+        None, description="Команда (если задание командное, иначе NULL)"
+    )
+    submitted_by: UUID = Field(
+        ..., description="Студент, который физически отправил работу"
+    )
+    answer_text: str | None = Field(
+        None, description="Текстовый ответ / комментарий к сдаче"
+    )
     status: SubmissionStatus = Field(default="submitted", description="Статус сдачи")
 
 
@@ -374,9 +480,16 @@ class SubmissionUpdateRequest(BaseModel):
 
 class SubmissionReviewRequest(BaseModel):
     """Оценивание работы или возврат на доработку преподавателем."""
-    status: Literal["graded", "returned"] = Field(..., description="graded (оценено) | returned (на доработку)")
-    score: float | None = Field(None, ge=0, description="Итоговый балл (обязателен при status='graded')")
-    feedback: str | None = Field(None, description="Рецензия / разбор ошибок преподавателем")
+
+    status: Literal["graded", "returned"] = Field(
+        ..., description="graded (оценено) | returned (на доработку)"
+    )
+    score: float | None = Field(
+        None, ge=0, description="Итоговый балл (обязателен при status='graded')"
+    )
+    feedback: str | None = Field(
+        None, description="Рецензия / разбор ошибок преподавателем"
+    )
     grader_id: UUID = Field(..., description="Преподаватель, выставивший оценку")
 
 
@@ -407,18 +520,34 @@ FileType = Literal["link", "document", "video", "image", "archive"]
 
 
 class FileBase(BaseModel):
-    file_type: FileType = Field(..., description="Тип: link | document | video | image | archive")
-    url: str = Field(..., max_length=1024, description="Единый URL: S3, Яндекс.Документ, YouTube или внешняя ссылка")
-    file_name: str | None = Field(None, max_length=255, description="Оригинальное имя файла или заголовок ссылки")
-    size_bytes: int | None = Field(None, description="Размер в байтах (NULL для внешних ссылок)")
+    file_type: FileType = Field(
+        ..., description="Тип: link | document | video | image | archive"
+    )
+    url: str = Field(
+        ...,
+        max_length=1024,
+        description="Единый URL: S3, Яндекс.Документ, YouTube или внешняя ссылка",
+    )
+    file_name: str | None = Field(
+        None, max_length=255, description="Оригинальное имя файла или заголовок ссылки"
+    )
+    size_bytes: int | None = Field(
+        None, description="Размер в байтах (NULL для внешних ссылок)"
+    )
     mime_type: str | None = Field(None, max_length=128, description="MIME-тип")
-    meta: dict[str, Any] | None = Field(None, description="Технические метаданные S3 / API")
+    meta: dict[str, Any] | None = Field(
+        None, description="Технические метаданные S3 / API"
+    )
 
 
 class FileCreateRequest(FileBase):
     uploader_id: UUID | None = Field(None, description="Кто загрузил / добавил ссылку")
-    lesson_id: UUID | None = Field(None, description="Урок, к которому прикреплён материал")
-    submission_id: UUID | None = Field(None, description="Сдача, к которой прикреплён файл")
+    lesson_id: UUID | None = Field(
+        None, description="Урок, к которому прикреплён материал"
+    )
+    submission_id: UUID | None = Field(
+        None, description="Сдача, к которой прикреплён файл"
+    )
 
 
 class FileResponse(FileBase):

@@ -35,7 +35,7 @@ class APIContractTests(unittest.TestCase):
         url = os.getenv("TEST_DATABASE_URL", "")
         if not url or not conninfo_to_dict(url).get("dbname", "").startswith("pocket_lms_api_test_"):
             raise RuntimeError("Set TEST_DATABASE_URL to a dedicated pocket_lms_api_test_* database")
-        cls.environment = patch.dict(os.environ, DATABASE_URL=url, JWT_SECRET=secrets.token_urlsafe(48))
+        cls.environment = patch.dict(os.environ, DATABASE_URL=url, JWT_SECRET=secrets.token_urlsafe(48), AUTH_COOKIE_SECURE="false")
         cls.environment.start()
         cls.addClassCleanup(cls.environment.stop)
         cls.db = psycopg.connect(url, autocommit=True, row_factory=dict_row)
@@ -48,7 +48,11 @@ class APIContractTests(unittest.TestCase):
         self.addCleanup(self.cleanup_rows)
         self.user = self.create_user()
         self.other = self.create_user()
-        self.headers = {"Authorization": "Bearer " + make_token(self.user["id"])}
+        self.headers = {"Authorization": "Bearer " + self.token(self.user["id"])}
+
+    def token(self, uid):
+        session=self.db.execute("INSERT INTO auth_sessions(user_id,refresh_hash) VALUES (%s,%s) RETURNING id",(uid,uuid4().hex)).fetchone()
+        return make_token(uid,session['id'])
 
     def cleanup_rows(self):
         for user_id in self.user_ids:
@@ -137,7 +141,7 @@ class APIContractTests(unittest.TestCase):
         response = self.client.post("/auth", json={"email": self.user["email"].upper(), "password": PASSWORD})
         self.assertEqual(response.status_code, 200, response.text)
         data = response.json()
-        self.assertEqual(set(data), {"access_token", "token_type", "user_id"})
+        self.assertEqual(set(data), {"access_token", "token_type", "user_id", "session_id", "expires_in"})
         self.assertEqual(data["user_id"], str(self.user["id"]))
         self.assertEqual(data["token_type"], "bearer")
         self.assertEqual(self.get("/get_user_info", headers={"Authorization": "Bearer " + data["access_token"]}).status_code, 200)
@@ -247,12 +251,12 @@ class APIContractTests(unittest.TestCase):
 
     def test_missing_or_inactive_user(self):
         missing_id = uuid4()
-        missing_headers = {"Authorization": "Bearer " + make_token(missing_id)}
+        missing_headers = {"Authorization": "Bearer " + make_token(missing_id, uuid4())}
         for path in PROTECTED:
-            self.assert_error(self.get(path, user_id=missing_id, headers=missing_headers), 404)
+            self.assert_error(self.get(path, user_id=missing_id, headers=missing_headers), 401)
         self.db.execute("UPDATE users SET is_active = FALSE WHERE id = %s", (self.user["id"],))
         for path in PROTECTED:
-            self.assert_error(self.get(path), 404)
+            self.assert_error(self.get(path), 401)
         self.assert_error(self.client.post("/auth", json={"email": self.user["email"], "password": PASSWORD}), 401)
 
     def test_app_returns_html_without_database(self):

@@ -1,7 +1,14 @@
-АКТУАЛЬНЫЕ МАРШРУТЫ ЛОКАЛЬНОЙ КОПИИ API — 25.10.2026
+АКТУАЛЬНЫЕ МАРШРУТЫ ЛОКАЛЬНОЙ КОПИИ API — 29.10.2026
 
 POST /register — Регистрация нового пользователя
 POST /auth — Вход пользователя (получение токена)
+POST /auth/refresh — Обновить вход на текущем устройстве
+POST /auth/logout — Выйти на текущем устройстве
+GET /auth/sessions — Посмотреть свои активные устройства
+POST /auth/change_password — Сменить пароль
+POST /admin/password_reset — Выдать одноразовый код восстановления
+POST /auth/reset_password — Восстановить пароль по коду администратора
+PATCH /admin/account_status — Заблокировать или разблокировать аккаунт
 GET /get_user_info — Профиль пользователя
 PATCH /update_settings — Изменение своего имени и фамилии
 GET /get_courses — Курсы текущего пользователя
@@ -10,11 +17,14 @@ POST /create_course — Создание курса
 PATCH /update_course — Редактирование курса
 POST /create_invitation — Генерация/получение кода приглашения
 POST /accept_invitation — Запись на курс по инвайт-коду
+DELETE /revoke_invitation — Revoke Invitation
+DELETE /remove_course_member — Remove Course Member
 GET /get_members — Список участников курса
 GET /get_modules — Список модулей пользователя
 GET /get_module_data — Данные модуля и его дисциплины
 POST /create_module — Создание модуля
 PATCH /update_module — Редактирование модуля
+DELETE /remove_module_member — Remove Module Member
 GET /get_materials — Материалы/уроки курса
 GET /get_material_data — Содержимое урока и вложения
 POST /create_material — Создание урока/материала
@@ -46,4 +56,4 @@ POST /complete_file_upload — Подтверждение загрузки по�
 GET /get_file_download — Временная ссылка на файл после проверки доступа
 POST /app — Отдать frontend приложения
 
-Подробные типы и примеры: API_CONTRACT_REVIEW.md. Ветка: endpoints.
+Подробные типы и примеры: API_CONTRACT_REVIEW.md. Ветка: feature/authentication.

@@ -7,7 +7,12 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from backend.api.dependencies import AuthUser, Connection, check_is_teacher_or_admin
 from backend.api.errors import PROTECTED_ERRORS
-from backend.api.access import course_access, material_access, assignment_access
+from backend.api.access import (
+    course_access,
+    material_access,
+    assignment_access,
+    can_delete_content,
+)
 from backend.db import methods
 from backend.schemas.data import (
     AssignmentCreateRequest,
@@ -51,7 +56,11 @@ async def get_assignment_data(
     return {"assignment": assignment, "targets": targets}
 
 
-@router.post("/create_assignment", response_model=AssignmentResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/create_assignment",
+    response_model=AssignmentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_assignment(
     data: AssignmentCreateRequest,
     user: AuthUser,
@@ -62,8 +71,10 @@ async def create_assignment(
         raise HTTPException(404, "Материал не найден")
     disc_id = lesson["discipline_id"]
     if not await check_is_teacher_or_admin(conn, user, disc_id):
-        raise HTTPException(status_code=403, detail="Только преподаватель курса может создавать задания")
-    return await methods.create_assignment(conn, data)
+        raise HTTPException(
+            status_code=403, detail="Только преподаватель курса может создавать задания"
+        )
+    return await methods.create_assignment(conn, data, created_by=user["id"])
 
 
 @router.patch("/update_assignment", response_model=AssignmentResponse)
@@ -81,7 +92,10 @@ async def update_assignment(
         raise HTTPException(404, "Материал не найден")
     disc_id = lesson["discipline_id"]
     if not await check_is_teacher_or_admin(conn, user, disc_id):
-        raise HTTPException(status_code=403, detail="Только преподаватель курса может редактировать задания")
+        raise HTTPException(
+            status_code=403,
+            detail="Только преподаватель курса может редактировать задания",
+        )
     updated = await methods.update_assignment(conn, assignment_id, data)
     return updated
 
@@ -99,8 +113,8 @@ async def delete_assignment(
     if lesson is None:
         raise HTTPException(404, "Материал не найден")
     disc_id = lesson["discipline_id"]
-    if not await check_is_teacher_or_admin(conn, user, disc_id):
-        raise HTTPException(status_code=403, detail="Только преподаватель курса может удалять задания")
+    if not await can_delete_content(conn, user, assignment, disc_id):
+        raise HTTPException(403, "Удалять задание может его автор или создатель модуля")
     deleted = await methods.delete_assignment(conn, assignment_id)
     return {"ok": True}
 

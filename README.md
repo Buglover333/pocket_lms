@@ -19,9 +19,10 @@ uv run python -c 'import secrets; print(secrets.token_urlsafe(48))'
 ```
 
 DATABASE_URL в примере соответствует PostgreSQL из docker-compose.yml (порт 5433).
-Далее запустите API:
+Далее примените схему и миграции и запустите API:
 
 ```sh
+uv run --env-file .env python scripts/migrate.py
 uv run --env-file .env uvicorn --app-dir src backend.api.main:app --host 127.0.0.1 --port 8000
 ```
 
@@ -105,3 +106,23 @@ HTTP-контракт API_DESCRIPTION.md сохранён, включая POST /
 ## Локальная проверка 25.10.2026
 
 Исправления подготовлены для ветки endpoints; публикация на GitHub выполняется отдельно. См. docs/REVIEW_2026-10-25.md, API_CONTRACT_REVIEW.md и TEST_RESULTS_REVIEW.md. Публичное обновление профиля ограничено именем и фамилией. Список сдач ограничен выбранным студентом. Для файлов S3 используется create_file_upload → отправка формы в хранилище → complete_file_upload → get_file_download. Для S3 нужны bucket, IAM credentials/роль и CORS провайдера; настоящие ключи не входят в проект.
+
+
+## Аутентификация и права (feature/authentication)
+
+Подробное описание для ревью и защиты: [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md).
+Email + пароль, без Яндекса, подтверждения email и внешней почты. Роль преподавателя
+действует в конкретном курсе; создатель модуля управляет всем своим модулем.
+
+Перед первым запуском и после обновления кода выполните:
+
+```sh
+uv run --env-file .env python scripts/migrate.py
+```
+
+Для локального Swagger по HTTP задайте в `.env` `AUTH_COOKIE_SECURE=false`.
+Для развёртывания по HTTPS оставьте `true` (значение по умолчанию).
+После миграции прежние JWT без сессии больше не принимаются — войдите заново.
+В тестовой команде выше также добавьте `AUTH_COOKIE_SECURE=false` перед `PYTHONPATH`.
+Новый `/create_invitation` принимает JSON с ролью и курсом/выбранными курсами модуля.
+Старые статические коды из карточки курса не дают права присоединиться: создайте приглашение.

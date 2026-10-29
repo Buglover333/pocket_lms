@@ -3,10 +3,21 @@
 from typing import Literal
 from uuid import UUID
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+)
 
 from backend.schemas.data import (
-    DisciplineBase, MemberRole, ModuleBase, UserProfileResponse, UserPublicBase,
+    DisciplineBase,
+    MemberRole,
+    ModuleBase,
+    UserProfileResponse,
+    UserPublicBase,
     SubmissionReviewRequest,
 )
 
@@ -16,7 +27,12 @@ class ErrorResponse(BaseModel):
 
 
 class AuthRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [{"email": "student@example.com", "password": "ExamplePass123"}]
+        },
+    )
 
     email: EmailStr = Field(max_length=255)
     password: str = Field(min_length=1, max_length=64)
@@ -31,6 +47,8 @@ class AuthResponse(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
     user_id: UUID
+    session_id: UUID
+    expires_in: int = 900
 
 
 RegisterResponse = UserPublicBase
@@ -61,6 +79,7 @@ class ModulesResponse(BaseModel):
 
 class ProfileSettingsUpdate(BaseModel):
     """Public self-service fields. Internal UserUpdate also supports password hashes."""
+
     model_config = ConfigDict(extra="forbid")
     first_name: str | None = Field(default=None, min_length=1, max_length=100)
     last_name: str | None = Field(default=None, min_length=1, max_length=100)
@@ -75,6 +94,7 @@ class ProfileSettingsUpdate(BaseModel):
 
 class GradeSubmissionRequest(SubmissionReviewRequest):
     """Оценивание; возврат выполняется отдельным /return_submission."""
+
     model_config = ConfigDict(extra="forbid")
     status: Literal["graded"] = "graded"
     score: float = Field(ge=0, allow_inf_nan=False)
@@ -92,25 +112,31 @@ class FileUploadRequest(BaseModel):
 
 from backend.schemas.data import LessonResponse, FileResponse, SubmissionResponse
 
+
 class MaterialDataResponse(BaseModel):
     material: LessonResponse
     files: list[FileResponse]
 
+
 class MaterialsResponse(BaseModel):
     items: list[LessonResponse]
+
 
 class SubmissionsResponse(BaseModel):
     items: list[SubmissionResponse]
 
+
 class SubmissionDataResponse(BaseModel):
     submission: SubmissionResponse
     files: list[FileResponse]
+
 
 class FileUploadResponse(BaseModel):
     file_id: UUID
     upload_url: str
     fields: dict[str, str]
     expires_in: int
+
 
 class FileDownloadResponse(BaseModel):
     download_url: str

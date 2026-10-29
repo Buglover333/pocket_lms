@@ -7,10 +7,14 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from backend.api.dependencies import AuthUser, Connection, check_is_teacher_or_admin
 from backend.api.errors import PROTECTED_ERRORS
-from backend.api.access import course_access, material_access
+from backend.api.access import course_access, material_access, can_delete_content
 from backend.db import methods
 from backend.schemas.api import MaterialsResponse, MaterialDataResponse
-from backend.schemas.data import LessonCreateRequest, LessonResponse, LessonUpdateRequest
+from backend.schemas.data import (
+    LessonCreateRequest,
+    LessonResponse,
+    LessonUpdateRequest,
+)
 
 router = APIRouter(tags=["Уроки и материалы"], responses=PROTECTED_ERRORS)
 
@@ -37,15 +41,22 @@ async def get_material_data(
     return {"material": lesson, "files": files}
 
 
-@router.post("/create_material", response_model=LessonResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/create_material",
+    response_model=LessonResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_material(
     data: LessonCreateRequest,
     user: AuthUser,
     conn: Connection,
 ) -> dict[str, Any]:
     if not await check_is_teacher_or_admin(conn, user, data.discipline_id):
-        raise HTTPException(status_code=403, detail="Только преподаватель курса может создавать материалы")
-    return await methods.create_lesson(conn, data)
+        raise HTTPException(
+            status_code=403,
+            detail="Только преподаватель курса может создавать материалы",
+        )
+    return await methods.create_lesson(conn, data, created_by=user["id"])
 
 
 @router.patch("/update_material", response_model=LessonResponse)
@@ -59,7 +70,10 @@ async def update_material(
     if lesson is None:
         raise HTTPException(status_code=404, detail="Материал не найден")
     if not await check_is_teacher_or_admin(conn, user, lesson["discipline_id"]):
-        raise HTTPException(status_code=403, detail="Только преподаватель курса может изменять материалы")
+        raise HTTPException(
+            status_code=403,
+            detail="Только преподаватель курса может изменять материалы",
+        )
     updated = await methods.update_lesson(conn, material_id, data)
     return updated
 
@@ -73,7 +87,17 @@ async def delete_material(
     lesson = await methods.get_lesson_by_id(conn, material_id)
     if lesson is None:
         raise HTTPException(status_code=404, detail="Материал не найден")
-    if not await check_is_teacher_or_admin(conn, user, lesson["discipline_id"]):
-        raise HTTPException(status_code=403, detail="Только преподаватель курса может удалять материалы")
+    if not await can_delete_content(conn, user, lesson, lesson["discipline_id"]):
+        raise HTTPException(
+            403, "Удалять материал может его автор или создатель модуля"
+        )
+    for assignment in await methods.get_assignments_by_lesson(conn, material_id):
+        if not await can_delete_content(
+            conn, user, assignment, lesson["discipline_id"]
+        ):
+            raise HTTPException(
+                403,
+                "Материал содержит задания другого преподавателя; обратитесь к создателю модуля",
+            )
     deleted = await methods.delete_lesson(conn, material_id)
     return {"ok": True}

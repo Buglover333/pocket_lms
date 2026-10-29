@@ -21,7 +21,7 @@ from backend.schemas.api import ErrorResponse
 
 app = FastAPI(
     title="Pocket LMS API",
-    version="0.4.0",
+    version="0.5.0",
     responses={422: {"model": ErrorResponse, "description": "Неверный формат запроса"}},
 )
 app.add_exception_handler(RequestValidationError, validation_error)
@@ -41,4 +41,16 @@ for router in (
     app.include_router(router)
 
 if (frontend.FRONTEND_DIR / "assets").is_dir():
-    app.mount("/assets", StaticFiles(directory=frontend.FRONTEND_DIR / "assets"), name="assets")
+    app.mount(
+        "/assets",
+        StaticFiles(directory=frontend.FRONTEND_DIR / "assets"),
+        name="assets",
+    )
+
+
+@app.middleware("http")
+async def prevent_private_response_caching(request, call_next):
+    response = await call_next(request)
+    if not request.url.path.startswith("/assets/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+    return response

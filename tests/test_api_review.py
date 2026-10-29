@@ -11,6 +11,7 @@ class APIReviewTests(unittest.TestCase):
         fixtures.APIContractTests.setUpClass.__func__(cls)
     setUp = fixtures.APIContractTests.setUp
     create_user = fixtures.APIContractTests.create_user
+    token = fixtures.APIContractTests.token
     assert_error = fixtures.APIContractTests.assert_error
     def cleanup_rows(self):
         for uid in self.user_ids:
@@ -22,7 +23,7 @@ class APIReviewTests(unittest.TestCase):
         self.member = self.db.execute("INSERT INTO discipline_members (discipline_id,user_id,role) VALUES (%s,%s,'student') RETURNING id", (self.course,self.user['id'])).fetchone()['id']
         self.lesson = self.db.execute("INSERT INTO lessons (discipline_id,title) VALUES (%s,'Урок') RETURNING id", (self.course,)).fetchone()['id']
         self.assignment = self.db.execute("INSERT INTO assignments (lesson_id,title,description_markdown) VALUES (%s,'Задание','Описание') RETURNING id", (self.lesson,)).fetchone()['id']
-        self.teacher_headers = {'Authorization':'Bearer '+make_token(self.other['id'])}
+        self.teacher_headers = {'Authorization':'Bearer '+self.token(self.other['id'])}
 
     def submission(self, user=None, **extra):
         body = dict(assignment_id=str(self.assignment), submitted_by=str((user or self.user)['id']), answer_text='Работа')
@@ -41,7 +42,7 @@ class APIReviewTests(unittest.TestCase):
 
     def test_nonmembers_cannot_read_materials_assignments_calendar_or_groups(self):
         self.setup_course()
-        outsider=self.create_user();headers={'Authorization':'Bearer '+make_token(outsider['id'])}
+        outsider=self.create_user();headers={'Authorization':'Bearer '+self.token(outsider['id'])}
         for path,params in [('/get_materials',{'course_id':self.course}),('/get_material_data',{'material_id':self.lesson}),('/get_assignments',{'lesson_id':self.lesson}),('/get_assignment_data',{'assignment_id':self.assignment}),('/get_calendar',{'course_id':self.course}),('/get_groups',{'course_id':self.course})]:
             with self.subTest(path=path):
                 self.assert_error(self.client.get(path,params=params,headers=headers),403)
@@ -95,7 +96,7 @@ class APIReviewTests(unittest.TestCase):
         self.assertEqual(str(self.db.execute('SELECT submission_id FROM files WHERE id=%s',(fid,)).fetchone()['submission_id']),r.json()['id'])
         other_student=self.create_user()
         self.db.execute("INSERT INTO discipline_members (discipline_id,user_id) VALUES (%s,%s)",(self.course,other_student['id']))
-        h={'Authorization':'Bearer '+make_token(other_student['id'])}
+        h={'Authorization':'Bearer '+self.token(other_student['id'])}
         self.assert_error(self.client.get('/get_file',params={'file_id':fid},headers=h),403)
         self.assertEqual(self.client.get('/get_file',params={'file_id':fid},headers=self.teacher_headers).status_code,200)
 
@@ -120,7 +121,7 @@ class APIReviewTests(unittest.TestCase):
             r=self.client.get('/get_file_download',params=params,headers=self.headers)
             self.assertEqual(r.status_code,200,r.text);sign.assert_called_once()
             self.assertEqual(r.json()['expires_in'],300)
-            h={'Authorization':'Bearer '+make_token(self.other['id'])}
+            h={'Authorization':'Bearer '+self.token(self.other['id'])}
             self.assert_error(self.client.get('/get_file_download',params=params,headers=h),403)
             self.assertEqual(sign.call_count,1)
 
@@ -142,7 +143,7 @@ class APIReviewTests(unittest.TestCase):
         self.assert_error(self.client.post('/grade_submission',params={'submission_id':sid},json=body,headers=self.teacher_headers),422)
         body['score']=80
         self.assertEqual(self.client.post('/grade_submission',params={'submission_id':sid},json=body,headers=self.teacher_headers).status_code,200)
-        h={'Authorization':'Bearer '+make_token(teammate['id'])}
+        h={'Authorization':'Bearer '+self.token(teammate['id'])}
         r=self.client.get('/get_submissions',params={'assignment_id':self.assignment},headers=h)
         self.assertEqual(r.json()['items'][0]['id'],sid)
         r=self.client.get('/get_grades',params={'course_id':self.course},headers=h)
@@ -243,7 +244,7 @@ class APIReviewTests(unittest.TestCase):
         self.assertEqual(float(r.json()['items'][0]['score']), 75)
         outsider = self.create_user()
         self.db.execute('INSERT INTO discipline_members (discipline_id,user_id) VALUES (%s,%s)', (self.course, outsider['id']))
-        h = {'Authorization': 'Bearer ' + make_token(outsider['id'])}
+        h = {'Authorization': 'Bearer ' + self.token(outsider['id'])}
         self.assert_error(self.client.get('/get_grades', params=params, headers=h), 403)
 
     def test_grade_list_hides_drafts_and_unassigned_selective_assignments(self):

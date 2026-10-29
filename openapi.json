@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Pocket LMS API",
-    "version": "0.4.0"
+    "version": "0.5.0"
   },
   "paths": {
     "/register": {
@@ -43,6 +43,36 @@
               }
             }
           },
+          "401": {
+            "description": "Неверные учётные данные или завершённая сессия",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит попыток",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Email уже зарегистрирован",
             "content": {
@@ -63,15 +93,29 @@
         ],
         "summary": "Authenticate",
         "operationId": "authenticate_auth_post",
+        "parameters": [
+          {
+            "name": "device_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "default": "Устройство",
+              "title": "Device Name"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AuthRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -96,6 +140,568 @@
           },
           "401": {
             "description": "Неверный email или пароль",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит попыток",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "Пользователи"
+        ],
+        "summary": "Обновить вход на текущем устройстве",
+        "description": "Отправьте cookie, установленную при входе, и X-Requested-With: PocketLMS. Токен обновления одноразовый; повторное использование завершает сессию этого устройства. Клиент должен выполнять обновления последовательно.",
+        "operationId": "refresh_auth_refresh_post",
+        "parameters": [
+          {
+            "name": "x-requested-with",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "const": "PocketLMS",
+              "type": "string",
+              "description": "Защита от CSRF",
+              "examples": [
+                "PocketLMS"
+              ],
+              "title": "X-Requested-With"
+            },
+            "description": "Защита от CSRF"
+          },
+          {
+            "name": "pocket_lms_refresh",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pocket Lms Refresh"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неверные учётные данные или завершённая сессия",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит попыток",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Пользователи"
+        ],
+        "summary": "Выйти на текущем устройстве",
+        "operationId": "logout_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неверные учётные данные или завершённая сессия",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит попыток",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/auth/sessions": {
+      "get": {
+        "tags": [
+          "Пользователи"
+        ],
+        "summary": "Посмотреть свои активные устройства",
+        "operationId": "list_sessions_auth_sessions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неверные учётные данные или завершённая сессия",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит попыток",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/auth/change_password": {
+      "post": {
+        "tags": [
+          "Пользователи"
+        ],
+        "summary": "Сменить пароль",
+        "description": "Требуется текущий пароль. Завершает все сессии, включая текущую; затем нужно войти снова.",
+        "operationId": "change_password_auth_change_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePassword"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неверные учётные данные или завершённая сессия",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит попыток",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/admin/password_reset": {
+      "post": {
+        "tags": [
+          "Пользователи"
+        ],
+        "summary": "Выдать одноразовый код восстановления",
+        "description": "Только разработчик-администратор после ручной проверки личности. Без внешнего почтового сервиса. Код показывается один раз, действует 30 минут; передайте его пользователю по проверенному личному каналу.",
+        "operationId": "issue_password_reset_admin_password_reset_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetCodeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неверные учётные данные или завершённая сессия",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит попыток",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/reset_password": {
+      "post": {
+        "tags": [
+          "Пользователи"
+        ],
+        "summary": "Восстановить пароль по коду администратора",
+        "operationId": "reset_password_auth_reset_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPassword"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неверные учётные данные или завершённая сессия",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит попыток",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/account_status": {
+      "patch": {
+        "tags": [
+          "Пользователи"
+        ],
+        "summary": "Заблокировать или разблокировать аккаунт",
+        "operationId": "account_status_admin_account_status_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlockAccount"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неверные учётные данные или завершённая сессия",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит попыток",
             "content": {
               "application/json": {
                 "schema": {
@@ -590,6 +1196,82 @@
         ],
         "summary": "Create Invitation",
         "operationId": "create_invitation_create_invitation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется авторизация",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Запрошены данные другого пользователя",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Пользователь не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/accept_invitation": {
+      "post": {
+        "tags": [
+          "Курсы"
+        ],
+        "summary": "Accept Invitation",
+        "operationId": "accept_invitation_accept_invitation_post",
         "security": [
           {
             "HTTPBearer": []
@@ -597,13 +1279,14 @@
         ],
         "parameters": [
           {
-            "name": "course_id",
+            "name": "invite_code",
             "in": "query",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Course Id"
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Invite Code"
             }
           }
         ],
@@ -613,9 +1296,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Create Invitation Create Invitation Post"
+                  "$ref": "#/components/schemas/InvitationAcceptance"
                 }
               }
             }
@@ -663,13 +1344,13 @@
         }
       }
     },
-    "/accept_invitation": {
-      "post": {
+    "/revoke_invitation": {
+      "delete": {
         "tags": [
           "Курсы"
         ],
-        "summary": "Accept Invitation",
-        "operationId": "accept_invitation_accept_invitation_post",
+        "summary": "Revoke Invitation",
+        "operationId": "revoke_invitation_revoke_invitation_delete",
         "security": [
           {
             "HTTPBearer": []
@@ -677,12 +1358,13 @@
         ],
         "parameters": [
           {
-            "name": "invite_code",
+            "name": "invitation_id",
             "in": "query",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Invite Code"
+              "format": "uuid",
+              "title": "Invitation Id"
             }
           }
         ],
@@ -692,7 +1374,95 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DisciplineMemberResponse"
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется авторизация",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Запрошены данные другого пользователя",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Пользователь не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/remove_course_member": {
+      "delete": {
+        "tags": [
+          "Курсы"
+        ],
+        "summary": "Remove Course Member",
+        "operationId": "remove_course_member_remove_course_member_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "member_user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Member User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
                 }
               }
             }
@@ -1095,6 +1865,94 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ModuleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется авторизация",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Запрошены данные другого пользователя",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Пользователь не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/remove_module_member": {
+      "delete": {
+        "tags": [
+          "Модули"
+        ],
+        "summary": "Remove Module Member",
+        "operationId": "remove_module_member_remove_module_member_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "module_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Module Id"
+            }
+          },
+          {
+            "name": "member_user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Member User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
                 }
               }
             }
@@ -3552,11 +4410,31 @@
   },
   "components": {
     "schemas": {
+      "AccountStatusResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "is_active"
+        ],
+        "title": "AccountStatusResponse"
+      },
       "AssignmentCreateRequest": {
         "properties": {
           "title": {
             "type": "string",
             "maxLength": 255,
+            "minLength": 1,
             "title": "Title",
             "description": "Название задания / лабораторной"
           },
@@ -3640,6 +4518,7 @@
           "title": {
             "type": "string",
             "maxLength": 255,
+            "minLength": 1,
             "title": "Title",
             "description": "Название задания / лабораторной"
           },
@@ -3702,6 +4581,18 @@
             "title": "Is Published",
             "description": "Опубликовано ли задание",
             "default": true
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
           },
           "id": {
             "type": "string",
@@ -3864,7 +4755,13 @@
           "email",
           "password"
         ],
-        "title": "AuthRequest"
+        "title": "AuthRequest",
+        "examples": [
+          {
+            "email": "student@example.com",
+            "password": "ExamplePass123"
+          }
+        ]
       },
       "AuthResponse": {
         "properties": {
@@ -3882,20 +4779,75 @@
             "type": "string",
             "format": "uuid",
             "title": "User Id"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In",
+            "default": 900
           }
         },
         "type": "object",
         "required": [
           "access_token",
-          "user_id"
+          "user_id",
+          "session_id"
         ],
         "title": "AuthResponse"
+      },
+      "BlockAccount": {
+        "properties": {
+          "blocked": {
+            "type": "boolean",
+            "title": "Blocked"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "blocked"
+        ],
+        "title": "BlockAccount"
+      },
+      "ChangePassword": {
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 8,
+            "title": "Password"
+          },
+          "password_confirm": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Password Confirm"
+          },
+          "current_password": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Current Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "password",
+          "password_confirm",
+          "current_password"
+        ],
+        "title": "ChangePassword"
       },
       "CourseItem": {
         "properties": {
           "title": {
             "type": "string",
             "maxLength": 255,
+            "minLength": 1,
             "title": "Title",
             "description": "Название курса/предмета"
           },
@@ -4030,11 +4982,54 @@
         ],
         "title": "CoursesResponse"
       },
+      "DeviceSession": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "device_name": {
+            "type": "string",
+            "title": "Device Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "last_used_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Used At"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "current": {
+            "type": "boolean",
+            "title": "Current"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "device_name",
+          "created_at",
+          "last_used_at",
+          "expires_at",
+          "current"
+        ],
+        "title": "DeviceSession"
+      },
       "DisciplineCreateRequest": {
         "properties": {
           "title": {
             "type": "string",
             "maxLength": 255,
+            "minLength": 1,
             "title": "Title",
             "description": "Название курса/предмета"
           },
@@ -4094,8 +5089,9 @@
           "invite_code": {
             "type": "string",
             "maxLength": 32,
+            "minLength": 1,
             "title": "Invite Code",
-            "description": "Уникальный код для записи на курс"
+            "description": "Совместимое поле курса; для записи создайте отдельное приглашение"
           },
           "module_id": {
             "anyOf": [
@@ -4127,83 +5123,16 @@
         "type": "object",
         "required": [
           "title",
-          "author_id",
-          "invite_code"
+          "author_id"
         ],
         "title": "DisciplineCreateRequest"
-      },
-      "DisciplineMemberResponse": {
-        "properties": {
-          "role": {
-            "type": "string",
-            "enum": [
-              "owner",
-              "teacher",
-              "student"
-            ],
-            "title": "Role",
-            "description": "Роль: owner | teacher | student",
-            "default": "student"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "active",
-              "invited",
-              "left"
-            ],
-            "title": "Status",
-            "description": "Статус: active | invited | left",
-            "default": "active"
-          },
-          "team_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Team Id",
-            "description": "В какой команде состоит студент на этом курсе"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "discipline_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Discipline Id"
-          },
-          "user_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "User Id"
-          },
-          "enrolled_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Enrolled At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "discipline_id",
-          "user_id",
-          "enrolled_at"
-        ],
-        "title": "DisciplineMemberResponse"
       },
       "DisciplineResponse": {
         "properties": {
           "title": {
             "type": "string",
             "maxLength": 255,
+            "minLength": 1,
             "title": "Title",
             "description": "Название курса/предмета"
           },
@@ -4839,11 +5768,199 @@
         "title": "GradeSubmissionRequest",
         "description": "Оценивание; возврат выполняется отдельным /return_submission."
       },
+      "InvitationAcceptance": {
+        "properties": {
+          "invitation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Invitation Id"
+          },
+          "module_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Id"
+          },
+          "course_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Course Ids"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "student",
+              "teacher"
+            ],
+            "title": "Role"
+          },
+          "already_accepted": {
+            "type": "boolean",
+            "title": "Already Accepted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "invitation_id",
+          "module_id",
+          "course_ids",
+          "role",
+          "already_accepted"
+        ],
+        "title": "InvitationAcceptance"
+      },
+      "InvitationCreate": {
+        "properties": {
+          "course_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "module_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Id"
+          },
+          "course_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Course Ids"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "student",
+              "teacher"
+            ],
+            "title": "Role",
+            "default": "student"
+          },
+          "expires_in_days": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Expires In Days",
+            "default": 7
+          },
+          "max_uses": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Max Uses",
+            "default": 100
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "InvitationCreate",
+        "examples": [
+          {
+            "course_id": "00000000-0000-4000-8000-000000000001",
+            "expires_in_days": 7,
+            "max_uses": 100,
+            "role": "student"
+          }
+        ]
+      },
+      "InvitationResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "module_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Id"
+          },
+          "course_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Course Ids"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "student",
+              "teacher"
+            ],
+            "title": "Role"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "max_uses": {
+            "type": "integer",
+            "title": "Max Uses"
+          },
+          "invite_code": {
+            "type": "string",
+            "title": "Invite Code"
+          },
+          "invitation_url": {
+            "type": "string",
+            "title": "Invitation Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "module_id",
+          "course_ids",
+          "role",
+          "expires_at",
+          "max_uses",
+          "invite_code",
+          "invitation_url"
+        ],
+        "title": "InvitationResponse"
+      },
       "LessonCreateRequest": {
         "properties": {
           "title": {
             "type": "string",
             "maxLength": 255,
+            "minLength": 1,
             "title": "Title",
             "description": "Тема занятия"
           },
@@ -4890,6 +6007,7 @@
           "title": {
             "type": "string",
             "maxLength": 255,
+            "minLength": 1,
             "title": "Title",
             "description": "Тема занятия"
           },
@@ -4916,6 +6034,18 @@
             "title": "Is Published",
             "description": "Опубликован ли урок",
             "default": true
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
           },
           "id": {
             "type": "string",
@@ -5041,11 +6171,31 @@
         ],
         "title": "MaterialsResponse"
       },
+      "MessageResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "detail"
+        ],
+        "title": "MessageResponse"
+      },
       "ModuleCreateRequest": {
         "properties": {
           "title": {
             "type": "string",
             "maxLength": 255,
+            "minLength": 1,
             "title": "Title",
             "description": "Название образовательного модуля"
           },
@@ -5080,6 +6230,7 @@
           "title": {
             "type": "string",
             "maxLength": 255,
+            "minLength": 1,
             "title": "Title",
             "description": "Название образовательного модуля"
           },
@@ -5119,6 +6270,7 @@
           "title": {
             "type": "string",
             "maxLength": 255,
+            "minLength": 1,
             "title": "Title",
             "description": "Название образовательного модуля"
           },
@@ -5264,6 +6416,70 @@
         "type": "object",
         "title": "ProfileSettingsUpdate",
         "description": "Public self-service fields. Internal UserUpdate also supports password hashes."
+      },
+      "ResetCodeResponse": {
+        "properties": {
+          "reset_code": {
+            "type": "string",
+            "title": "Reset Code"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reset_code",
+          "expires_at"
+        ],
+        "title": "ResetCodeResponse"
+      },
+      "ResetPassword": {
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 8,
+            "title": "Password"
+          },
+          "password_confirm": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Password Confirm"
+          },
+          "reset_code": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 32,
+            "title": "Reset Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "password",
+          "password_confirm",
+          "reset_code"
+        ],
+        "title": "ResetPassword"
+      },
+      "SessionList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceSession"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "SessionList"
       },
       "SubmissionCreateRequest": {
         "properties": {
@@ -5556,6 +6772,20 @@
         ],
         "title": "SubmissionsResponse"
       },
+      "SuccessResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "title": "SuccessResponse"
+      },
       "TeamCreateRequest": {
         "properties": {
           "name": {
@@ -5828,7 +7058,16 @@
           "password_confirm"
         ],
         "title": "UserRegister",
-        "description": "Public registration input, including password confirmation."
+        "description": "Public registration input, including password confirmation.",
+        "examples": [
+          {
+            "email": "student@example.com",
+            "first_name": "Анна",
+            "last_name": "Иванова",
+            "password": "ExamplePass123",
+            "password_confirm": "ExamplePass123"
+          }
+        ]
       }
     },
     "securitySchemes": {

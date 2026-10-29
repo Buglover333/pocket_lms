@@ -56,7 +56,10 @@ except (ImportError, ValueError):
 # 1. ПОЛЬЗОВАТЕЛИ (Таблица users)
 # ==============================================================================
 
-async def create_user(conn: psycopg.AsyncConnection, user: UserCreate) -> dict[str, Any]:
+
+async def create_user(
+    conn: psycopg.AsyncConnection, user: UserCreate
+) -> dict[str, Any]:
     """Создать пользователя. Сохраняется безопасный хэш пароля."""
     query = """
         INSERT INTO users (email, password_hash, first_name, last_name)
@@ -64,7 +67,9 @@ async def create_user(conn: psycopg.AsyncConnection, user: UserCreate) -> dict[s
         RETURNING id, email, first_name, last_name, is_active, created_at, updated_at;
     """
     async with conn.cursor(row_factory=dict_row) as cur:
-        await cur.execute(query, (user.email, user.password_hash, user.first_name, user.last_name))
+        await cur.execute(
+            query, (user.email, user.password_hash, user.first_name, user.last_name)
+        )
         return await cur.fetchone()
 
 
@@ -92,7 +97,9 @@ async def get_user_by_email(
         return await cur.fetchone()
 
 
-async def get_user_credentials(conn: psycopg.AsyncConnection, email: str) -> dict[str, Any] | None:
+async def get_user_credentials(
+    conn: psycopg.AsyncConnection, email: str
+) -> dict[str, Any] | None:
     """Учётные данные активного пользователя только для проверки пароля при входе."""
     query = "SELECT id, password_hash FROM users WHERE lower(email) = lower(%s) AND is_active = TRUE"
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -101,7 +108,11 @@ async def get_user_credentials(conn: psycopg.AsyncConnection, email: str) -> dic
 
 
 async def get_users(
-    conn: psycopg.AsyncConnection, *, include_inactive: bool = False, limit: int = 100, offset: int = 0
+    conn: psycopg.AsyncConnection,
+    *,
+    include_inactive: bool = False,
+    limit: int = 100,
+    offset: int = 0,
 ) -> list[dict[str, Any]]:
     """Список пользователей с пагинацией."""
     query = "SELECT id, email, first_name, last_name, is_active, created_at, updated_at FROM users"
@@ -125,7 +136,9 @@ async def update_user(
     if not set(changes).issubset(allowed_columns):
         raise ValueError("UserUpdate содержит неподдерживаемые поля")
 
-    assignments = [sql.SQL("{} = %s").format(sql.Identifier(column)) for column in changes]
+    assignments = [
+        sql.SQL("{} = %s").format(sql.Identifier(column)) for column in changes
+    ]
     assignments.append(sql.SQL("updated_at = CURRENT_TIMESTAMP"))
     query = sql.SQL(
         "UPDATE users SET {} WHERE id = %s AND is_active = TRUE "
@@ -152,7 +165,10 @@ async def delete_user(conn: psycopg.AsyncConnection, user_id: UUID) -> bool:
 # 2. МОДУЛИ (Таблица modules)
 # ==============================================================================
 
-async def create_module(conn: psycopg.AsyncConnection, data: ModuleCreateRequest) -> dict:
+
+async def create_module(
+    conn: psycopg.AsyncConnection, data: ModuleCreateRequest
+) -> dict:
     """Создает новый образовательный модуль."""
     query = """
         INSERT INTO modules (title, description, curator_id)
@@ -164,7 +180,9 @@ async def create_module(conn: psycopg.AsyncConnection, data: ModuleCreateRequest
         return await cur.fetchone()
 
 
-async def get_module_by_id(conn: psycopg.AsyncConnection, module_id: UUID) -> dict | None:
+async def get_module_by_id(
+    conn: psycopg.AsyncConnection, module_id: UUID
+) -> dict | None:
     """Возвращает модуль по его ID."""
     query = "SELECT * FROM modules WHERE id = %s;"
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -173,9 +191,7 @@ async def get_module_by_id(conn: psycopg.AsyncConnection, module_id: UUID) -> di
 
 
 async def get_modules_list(
-    conn: psycopg.AsyncConnection,
-    limit: int = 100,
-    offset: int = 0
+    conn: psycopg.AsyncConnection, limit: int = 100, offset: int = 0
 ) -> list[dict]:
     """Возвращает список образовательных модулей с пагинацией."""
     query = "SELECT * FROM modules ORDER BY created_at DESC LIMIT %s OFFSET %s;"
@@ -185,9 +201,7 @@ async def get_modules_list(
 
 
 async def update_module(
-    conn: psycopg.AsyncConnection,
-    module_id: UUID,
-    data: ModuleUpdateRequest
+    conn: psycopg.AsyncConnection, module_id: UUID, data: ModuleUpdateRequest
 ) -> dict | None:
     """Обновляет только переданные поля модуля."""
     update_data = data.model_dump(exclude_unset=True)
@@ -195,8 +209,7 @@ async def update_module(
         return await get_module_by_id(conn, module_id)
 
     set_clauses = [
-        sql.SQL("{} = %s").format(sql.Identifier(col))
-        for col in update_data.keys()
+        sql.SQL("{} = %s").format(sql.Identifier(col)) for col in update_data.keys()
     ]
     set_clauses.append(sql.SQL("updated_at = now()"))
 
@@ -222,7 +235,10 @@ async def delete_module(conn: psycopg.AsyncConnection, module_id: UUID) -> bool:
 # 3. ДИСЦИПЛИНЫ / КУРСЫ (Таблица disciplines)
 # ==============================================================================
 
-async def create_discipline(conn: psycopg.AsyncConnection, data: DisciplineCreateRequest) -> dict:
+
+async def create_discipline(
+    conn: psycopg.AsyncConnection, data: DisciplineCreateRequest
+) -> dict:
     """Создает новый курс/дисциплину."""
     query = """
         INSERT INTO disciplines (
@@ -245,10 +261,17 @@ async def create_discipline(conn: psycopg.AsyncConnection, data: DisciplineCreat
     )
     async with conn.cursor(row_factory=dict_row) as cur:
         await cur.execute(query, values)
-        return await cur.fetchone()
+        course = await cur.fetchone()
+        await cur.execute(
+            "INSERT INTO discipline_members(discipline_id,user_id,role) VALUES (%s,%s,'owner')",
+            (course["id"], data.author_id),
+        )
+        return course
 
 
-async def get_discipline_by_id(conn: psycopg.AsyncConnection, discipline_id: UUID) -> dict | None:
+async def get_discipline_by_id(
+    conn: psycopg.AsyncConnection, discipline_id: UUID
+) -> dict | None:
     """Возвращает курс по ID."""
     query = "SELECT * FROM disciplines WHERE id = %s;"
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -256,7 +279,9 @@ async def get_discipline_by_id(conn: psycopg.AsyncConnection, discipline_id: UUI
         return await cur.fetchone()
 
 
-async def get_discipline_by_invite_code(conn: psycopg.AsyncConnection, invite_code: str) -> dict | None:
+async def get_discipline_by_invite_code(
+    conn: psycopg.AsyncConnection, invite_code: str
+) -> dict | None:
     """Находит курс по коду приглашения (для записи студентов)."""
     query = "SELECT * FROM disciplines WHERE invite_code = %s;"
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -264,7 +289,9 @@ async def get_discipline_by_invite_code(conn: psycopg.AsyncConnection, invite_co
         return await cur.fetchone()
 
 
-async def get_disciplines_by_module(conn: psycopg.AsyncConnection, module_id: UUID) -> list[dict]:
+async def get_disciplines_by_module(
+    conn: psycopg.AsyncConnection, module_id: UUID
+) -> list[dict]:
     """Возвращает список курсов, привязанных к конкретному модулю."""
     query = "SELECT * FROM disciplines WHERE module_id = %s ORDER BY created_at DESC;"
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -273,9 +300,7 @@ async def get_disciplines_by_module(conn: psycopg.AsyncConnection, module_id: UU
 
 
 async def get_disciplines_list(
-    conn: psycopg.AsyncConnection,
-    limit: int = 100,
-    offset: int = 0
+    conn: psycopg.AsyncConnection, limit: int = 100, offset: int = 0
 ) -> list[dict]:
     """Возвращает список всех курсов с пагинацией."""
     query = "SELECT * FROM disciplines ORDER BY created_at DESC LIMIT %s OFFSET %s;"
@@ -285,9 +310,7 @@ async def get_disciplines_list(
 
 
 async def update_discipline(
-    conn: psycopg.AsyncConnection,
-    discipline_id: UUID,
-    data: DisciplineUpdateRequest
+    conn: psycopg.AsyncConnection, discipline_id: UUID, data: DisciplineUpdateRequest
 ) -> dict | None:
     """Обновляет только переданные поля курса."""
     update_data = data.model_dump(exclude_unset=True)
@@ -295,8 +318,7 @@ async def update_discipline(
         return await get_discipline_by_id(conn, discipline_id)
 
     set_clauses = [
-        sql.SQL("{} = %s").format(sql.Identifier(col))
-        for col in update_data.keys()
+        sql.SQL("{} = %s").format(sql.Identifier(col)) for col in update_data.keys()
     ]
     set_clauses.append(sql.SQL("updated_at = now()"))
 
@@ -322,6 +344,7 @@ async def delete_discipline(conn: psycopg.AsyncConnection, discipline_id: UUID) 
 # 4. КОМАНДЫ (Таблица teams)
 # ==============================================================================
 
+
 async def create_team(conn: psycopg.AsyncConnection, data: TeamCreateRequest) -> dict:
     """Создать команду внутри курса."""
     query = """
@@ -342,7 +365,9 @@ async def get_team_by_id(conn: psycopg.AsyncConnection, team_id: UUID) -> dict |
         return await cur.fetchone()
 
 
-async def get_teams_by_discipline(conn: psycopg.AsyncConnection, discipline_id: UUID) -> list[dict]:
+async def get_teams_by_discipline(
+    conn: psycopg.AsyncConnection, discipline_id: UUID
+) -> list[dict]:
     """Список всех команд конкретного курса."""
     query = "SELECT * FROM teams WHERE discipline_id = %s ORDER BY created_at ASC;"
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -365,14 +390,20 @@ async def get_team_members(conn: psycopg.AsyncConnection, team_id: UUID) -> list
         return await cur.fetchall()
 
 
-async def update_team(conn: psycopg.AsyncConnection, team_id: UUID, data: TeamUpdateRequest) -> dict | None:
+async def update_team(
+    conn: psycopg.AsyncConnection, team_id: UUID, data: TeamUpdateRequest
+) -> dict | None:
     """Обновить название или описание команды."""
     update_data = data.model_dump(exclude_unset=True)
     if not update_data:
         return await get_team_by_id(conn, team_id)
 
-    set_clauses = [sql.SQL("{} = %s").format(sql.Identifier(col)) for col in update_data.keys()]
-    query = sql.SQL("UPDATE teams SET {} WHERE id = %s RETURNING *;").format(sql.SQL(", ").join(set_clauses))
+    set_clauses = [
+        sql.SQL("{} = %s").format(sql.Identifier(col)) for col in update_data.keys()
+    ]
+    query = sql.SQL("UPDATE teams SET {} WHERE id = %s RETURNING *;").format(
+        sql.SQL(", ").join(set_clauses)
+    )
     values = list(update_data.values()) + [team_id]
 
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -392,7 +423,10 @@ async def delete_team(conn: psycopg.AsyncConnection, team_id: UUID) -> bool:
 # 5. УЧАСТНИКИ КУРСА (Таблица discipline_members)
 # ==============================================================================
 
-async def add_discipline_member(conn: psycopg.AsyncConnection, data: DisciplineMemberCreateRequest) -> dict:
+
+async def add_discipline_member(
+    conn: psycopg.AsyncConnection, data: DisciplineMemberCreateRequest
+) -> dict:
     """Записать пользователя (студента/преподавателя) на курс."""
     query = """
         INSERT INTO discipline_members (discipline_id, user_id, role, status, team_id)
@@ -400,11 +434,16 @@ async def add_discipline_member(conn: psycopg.AsyncConnection, data: DisciplineM
         RETURNING *;
     """
     async with conn.cursor(row_factory=dict_row) as cur:
-        await cur.execute(query, (data.discipline_id, data.user_id, data.role, data.status, data.team_id))
+        await cur.execute(
+            query,
+            (data.discipline_id, data.user_id, data.role, data.status, data.team_id),
+        )
         return await cur.fetchone()
 
 
-async def get_discipline_member_by_id(conn: psycopg.AsyncConnection, member_id: UUID) -> dict | None:
+async def get_discipline_member_by_id(
+    conn: psycopg.AsyncConnection, member_id: UUID
+) -> dict | None:
     """Получить запись участника по ID."""
     query = "SELECT * FROM discipline_members WHERE id = %s;"
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -437,7 +476,7 @@ async def get_discipline_members_with_profiles(
                u.email, u.first_name, u.last_name, u.avatar_id
         FROM discipline_members dm
         JOIN users u ON dm.user_id = u.id
-        WHERE dm.discipline_id = %s
+        WHERE dm.discipline_id = %s AND dm.status='active' AND u.is_active
         ORDER BY dm.role, u.last_name, u.first_name;
     """
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -446,38 +485,32 @@ async def get_discipline_members_with_profiles(
 
 
 async def get_user_disciplines(
-    conn: psycopg.AsyncConnection, user_id: UUID, *, active_only: bool = False
+    conn, user_id: UUID, *, active_only: bool = False
 ) -> list[dict]:
-    """Курсы пользователя; active_only ограничивает результат активным членством.
-
-    По умолчанию сохраняется прежнее поведение CRUD-метода: все статусы членства.
-    """
     query = """
-        SELECT d.*, dm.role AS member_role, dm.status AS member_status, dm.team_id
-        FROM discipline_members dm
-        JOIN disciplines d ON dm.discipline_id = d.id
-        WHERE dm.user_id = %s
+        SELECT d.*, CASE WHEN d.author_id=%s OR m.curator_id=%s THEN 'owner' ELSE dm.role END AS member_role,
+            COALESCE(dm.status,'active') AS member_status, dm.team_id
+        FROM disciplines d LEFT JOIN modules m ON m.id=d.module_id
+        LEFT JOIN discipline_members dm ON dm.discipline_id=d.id AND dm.user_id=%s
+        WHERE d.author_id=%s OR m.curator_id=%s OR (dm.user_id=%s
     """
     if active_only:
-        query += " AND dm.status = 'active'"
-    query += " ORDER BY dm.enrolled_at DESC, d.id;"
+        query += " AND dm.status='active'"
+    query += ") ORDER BY d.created_at DESC,d.id"
     async with conn.cursor(row_factory=dict_row) as cur:
-        await cur.execute(query, (user_id,))
+        await cur.execute(query, (user_id,) * 6)
         return await cur.fetchall()
 
 
-async def get_user_modules(conn: psycopg.AsyncConnection, user_id: UUID) -> list[dict]:
-    """Модули активных курсов пользователя без повторов и курсов без модуля."""
-    query = """
-        SELECT DISTINCT m.id, m.title, m.description, m.curator_id
-        FROM discipline_members dm
-        JOIN disciplines d ON d.id = dm.discipline_id
-        JOIN modules m ON m.id = d.module_id
-        WHERE dm.user_id = %s AND dm.status = 'active'
-        ORDER BY m.title, m.id;
-    """
+async def get_user_modules(conn, user_id: UUID) -> list[dict]:
+    query = """SELECT DISTINCT m.id,m.title,m.description,m.curator_id FROM modules m
+        WHERE m.curator_id=%s OR EXISTS(SELECT 1 FROM module_members mm
+            WHERE mm.module_id=m.id AND mm.user_id=%s AND mm.status='active')
+        OR EXISTS(SELECT 1 FROM disciplines d LEFT JOIN discipline_members dm ON dm.discipline_id=d.id
+            AND dm.user_id=%s AND dm.status='active' WHERE d.module_id=m.id AND (d.author_id=%s OR dm.id IS NOT NULL))
+        ORDER BY m.title,m.id"""
     async with conn.cursor(row_factory=dict_row) as cur:
-        await cur.execute(query, (user_id,))
+        await cur.execute(query, (user_id,) * 4)
         return await cur.fetchall()
 
 
@@ -489,10 +522,12 @@ async def update_discipline_member(
     if not update_data:
         return await get_discipline_member_by_id(conn, member_id)
 
-    set_clauses = [sql.SQL("{} = %s").format(sql.Identifier(col)) for col in update_data.keys()]
-    query = sql.SQL("UPDATE discipline_members SET {} WHERE id = %s RETURNING *;").format(
-        sql.SQL(", ").join(set_clauses)
-    )
+    set_clauses = [
+        sql.SQL("{} = %s").format(sql.Identifier(col)) for col in update_data.keys()
+    ]
+    query = sql.SQL(
+        "UPDATE discipline_members SET {} WHERE id = %s RETURNING *;"
+    ).format(sql.SQL(", ").join(set_clauses))
     values = list(update_data.values()) + [member_id]
 
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -500,7 +535,9 @@ async def update_discipline_member(
         return await cur.fetchone()
 
 
-async def remove_discipline_member(conn: psycopg.AsyncConnection, member_id: UUID) -> bool:
+async def remove_discipline_member(
+    conn: psycopg.AsyncConnection, member_id: UUID
+) -> bool:
     """Исключить участника с курса."""
     query = "DELETE FROM discipline_members WHERE id = %s;"
     async with conn.cursor() as cur:
@@ -512,20 +549,35 @@ async def remove_discipline_member(conn: psycopg.AsyncConnection, member_id: UUI
 # 6. УРОКИ (Таблица lessons)
 # ==============================================================================
 
-async def create_lesson(conn: psycopg.AsyncConnection, data: LessonCreateRequest) -> dict:
+
+async def create_lesson(
+    conn: psycopg.AsyncConnection,
+    data: LessonCreateRequest,
+    *,
+    created_by: UUID | None = None,
+) -> dict:
     """Создать урок в курсе."""
     query = """
-        INSERT INTO lessons (discipline_id, title, order_index, content_markdown, is_published)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO lessons (discipline_id, title, order_index, content_markdown, is_published, created_by)
+        VALUES (%s, %s, %s, %s, %s, %s)
         RETURNING *;
     """
-    values = (data.discipline_id, data.title, data.order_index, data.content_markdown, data.is_published)
+    values = (
+        data.discipline_id,
+        data.title,
+        data.order_index,
+        data.content_markdown,
+        data.is_published,
+        created_by,
+    )
     async with conn.cursor(row_factory=dict_row) as cur:
         await cur.execute(query, values)
         return await cur.fetchone()
 
 
-async def get_lesson_by_id(conn: psycopg.AsyncConnection, lesson_id: UUID) -> dict | None:
+async def get_lesson_by_id(
+    conn: psycopg.AsyncConnection, lesson_id: UUID
+) -> dict | None:
     """Получить урок по ID."""
     query = "SELECT * FROM lessons WHERE id = %s;"
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -547,15 +599,21 @@ async def get_lessons_by_discipline(
         return await cur.fetchall()
 
 
-async def update_lesson(conn: psycopg.AsyncConnection, lesson_id: UUID, data: LessonUpdateRequest) -> dict | None:
+async def update_lesson(
+    conn: psycopg.AsyncConnection, lesson_id: UUID, data: LessonUpdateRequest
+) -> dict | None:
     """Обновить урок."""
     update_data = data.model_dump(exclude_unset=True)
     if not update_data:
         return await get_lesson_by_id(conn, lesson_id)
 
-    set_clauses = [sql.SQL("{} = %s").format(sql.Identifier(col)) for col in update_data.keys()]
+    set_clauses = [
+        sql.SQL("{} = %s").format(sql.Identifier(col)) for col in update_data.keys()
+    ]
     set_clauses.append(sql.SQL("updated_at = now()"))
-    query = sql.SQL("UPDATE lessons SET {} WHERE id = %s RETURNING *;").format(sql.SQL(", ").join(set_clauses))
+    query = sql.SQL("UPDATE lessons SET {} WHERE id = %s RETURNING *;").format(
+        sql.SQL(", ").join(set_clauses)
+    )
     values = list(update_data.values()) + [lesson_id]
 
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -575,26 +633,42 @@ async def delete_lesson(conn: psycopg.AsyncConnection, lesson_id: UUID) -> bool:
 # 7. ЗАДАНИЯ (Таблица assignments)
 # ==============================================================================
 
-async def create_assignment(conn: psycopg.AsyncConnection, data: AssignmentCreateRequest) -> dict:
+
+async def create_assignment(
+    conn: psycopg.AsyncConnection,
+    data: AssignmentCreateRequest,
+    *,
+    created_by: UUID | None = None,
+) -> dict:
     """Создать задание к уроку."""
     query = """
         INSERT INTO assignments (
             lesson_id, title, description_markdown, target_type,
-            is_team_work, max_score, due_date, template_file_id, is_published
+            is_team_work, max_score, due_date, template_file_id, is_published, created_by
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING *;
     """
     values = (
-        data.lesson_id, data.title, data.description_markdown, data.target_type,
-        data.is_team_work, data.max_score, data.due_date, data.template_file_id, data.is_published
+        data.lesson_id,
+        data.title,
+        data.description_markdown,
+        data.target_type,
+        data.is_team_work,
+        data.max_score,
+        data.due_date,
+        data.template_file_id,
+        data.is_published,
+        created_by,
     )
     async with conn.cursor(row_factory=dict_row) as cur:
         await cur.execute(query, values)
         return await cur.fetchone()
 
 
-async def get_assignment_by_id(conn: psycopg.AsyncConnection, assignment_id: UUID) -> dict | None:
+async def get_assignment_by_id(
+    conn: psycopg.AsyncConnection, assignment_id: UUID
+) -> dict | None:
     """Получить задание по ID."""
     query = "SELECT * FROM assignments WHERE id = %s;"
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -602,7 +676,9 @@ async def get_assignment_by_id(conn: psycopg.AsyncConnection, assignment_id: UUI
         return await cur.fetchone()
 
 
-async def get_assignments_by_lesson(conn: psycopg.AsyncConnection, lesson_id: UUID) -> list[dict]:
+async def get_assignments_by_lesson(
+    conn: psycopg.AsyncConnection, lesson_id: UUID
+) -> list[dict]:
     """Получить все задания урока."""
     query = "SELECT * FROM assignments WHERE lesson_id = %s ORDER BY created_at ASC;"
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -610,7 +686,9 @@ async def get_assignments_by_lesson(conn: psycopg.AsyncConnection, lesson_id: UU
         return await cur.fetchall()
 
 
-async def get_discipline_deadlines(conn: psycopg.AsyncConnection, discipline_id: UUID) -> list[dict]:
+async def get_discipline_deadlines(
+    conn: psycopg.AsyncConnection, discipline_id: UUID
+) -> list[dict]:
     """Задания с дедлайнами для отображения в Календаре."""
     query = """
         SELECT a.id, a.lesson_id, a.title, a.due_date, a.max_score, a.is_team_work, l.title AS lesson_title
@@ -632,9 +710,13 @@ async def update_assignment(
     if not update_data:
         return await get_assignment_by_id(conn, assignment_id)
 
-    set_clauses = [sql.SQL("{} = %s").format(sql.Identifier(col)) for col in update_data.keys()]
+    set_clauses = [
+        sql.SQL("{} = %s").format(sql.Identifier(col)) for col in update_data.keys()
+    ]
     set_clauses.append(sql.SQL("updated_at = now()"))
-    query = sql.SQL("UPDATE assignments SET {} WHERE id = %s RETURNING *;").format(sql.SQL(", ").join(set_clauses))
+    query = sql.SQL("UPDATE assignments SET {} WHERE id = %s RETURNING *;").format(
+        sql.SQL(", ").join(set_clauses)
+    )
     values = list(update_data.values()) + [assignment_id]
 
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -654,7 +736,10 @@ async def delete_assignment(conn: psycopg.AsyncConnection, assignment_id: UUID) 
 # 8. ПЕРСОНАЛЬНЫЕ НАЗНАЧЕНИЯ ЗАДАНИЙ (Таблица assignment_targets)
 # ==============================================================================
 
-async def add_assignment_target(conn: psycopg.AsyncConnection, data: AssignmentTargetCreateRequest) -> dict:
+
+async def add_assignment_target(
+    conn: psycopg.AsyncConnection, data: AssignmentTargetCreateRequest
+) -> dict:
     """Назначить задание персонально студенту."""
     query = """
         INSERT INTO assignment_targets (assignment_id, member_id)
@@ -666,7 +751,9 @@ async def add_assignment_target(conn: psycopg.AsyncConnection, data: AssignmentT
         return await cur.fetchone()
 
 
-async def get_assignment_targets(conn: psycopg.AsyncConnection, assignment_id: UUID) -> list[dict]:
+async def get_assignment_targets(
+    conn: psycopg.AsyncConnection, assignment_id: UUID
+) -> list[dict]:
     """Список персонально назначенных студентов."""
     query = """
         SELECT at.id, at.assignment_id, at.member_id, at.assigned_at,
@@ -681,7 +768,9 @@ async def get_assignment_targets(conn: psycopg.AsyncConnection, assignment_id: U
         return await cur.fetchall()
 
 
-async def remove_assignment_target(conn: psycopg.AsyncConnection, target_id: UUID) -> bool:
+async def remove_assignment_target(
+    conn: psycopg.AsyncConnection, target_id: UUID
+) -> bool:
     """Отозвать персональное назначение."""
     query = "DELETE FROM assignment_targets WHERE id = %s;"
     async with conn.cursor() as cur:
@@ -693,7 +782,10 @@ async def remove_assignment_target(conn: psycopg.AsyncConnection, target_id: UUI
 # 9. СДАЧИ ЗАДАНИЙ И ОЦЕНИВАНИЕ (Таблица submissions)
 # ==============================================================================
 
-async def create_submission(conn: psycopg.AsyncConnection, data: SubmissionCreateRequest) -> dict:
+
+async def create_submission(
+    conn: psycopg.AsyncConnection, data: SubmissionCreateRequest
+) -> dict:
     """Сдать работу (создать новую попытку сдачи)."""
     # Рассчитываем номер попытки attempt_number
     count_query = """
@@ -710,12 +802,21 @@ async def create_submission(conn: psycopg.AsyncConnection, data: SubmissionCreat
             VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING *;
         """
-        values = (data.assignment_id, data.team_id, data.submitted_by, data.status, next_attempt, data.answer_text)
+        values = (
+            data.assignment_id,
+            data.team_id,
+            data.submitted_by,
+            data.status,
+            next_attempt,
+            data.answer_text,
+        )
         await cur.execute(insert_query, values)
         return await cur.fetchone()
 
 
-async def get_submission_by_id(conn: psycopg.AsyncConnection, submission_id: UUID) -> dict | None:
+async def get_submission_by_id(
+    conn: psycopg.AsyncConnection, submission_id: UUID
+) -> dict | None:
     """Получить сдачу по ID."""
     query = "SELECT * FROM submissions WHERE id = %s;"
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -810,9 +911,13 @@ async def update_submission(
     if not update_data:
         return await get_submission_by_id(conn, submission_id)
 
-    set_clauses = [sql.SQL("{} = %s").format(sql.Identifier(col)) for col in update_data.keys()]
+    set_clauses = [
+        sql.SQL("{} = %s").format(sql.Identifier(col)) for col in update_data.keys()
+    ]
     set_clauses.append(sql.SQL("updated_at = now()"))
-    query = sql.SQL("UPDATE submissions SET {} WHERE id = %s RETURNING *;").format(sql.SQL(", ").join(set_clauses))
+    query = sql.SQL("UPDATE submissions SET {} WHERE id = %s RETURNING *;").format(
+        sql.SQL(", ").join(set_clauses)
+    )
     values = list(update_data.values()) + [submission_id]
 
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -840,6 +945,7 @@ async def review_submission(
 # 10. ФАЙЛЫ И РЕСУРСЫ (Таблица files)
 # ==============================================================================
 
+
 async def create_file(conn: psycopg.AsyncConnection, data: FileCreateRequest) -> dict:
     """Зарегистрировать файл или ссылку."""
     meta_json = json.dumps(data.meta) if data.meta else None
@@ -849,8 +955,15 @@ async def create_file(conn: psycopg.AsyncConnection, data: FileCreateRequest) ->
         RETURNING *;
     """
     values = (
-        data.uploader_id, data.lesson_id, data.submission_id, data.file_type,
-        data.url, data.file_name, data.size_bytes, data.mime_type, meta_json
+        data.uploader_id,
+        data.lesson_id,
+        data.submission_id,
+        data.file_type,
+        data.url,
+        data.file_name,
+        data.size_bytes,
+        data.mime_type,
+        meta_json,
     )
     async with conn.cursor(row_factory=dict_row) as cur:
         await cur.execute(query, values)
@@ -865,7 +978,9 @@ async def get_file_by_id(conn: psycopg.AsyncConnection, file_id: UUID) -> dict |
         return await cur.fetchone()
 
 
-async def get_files_by_lesson(conn: psycopg.AsyncConnection, lesson_id: UUID) -> list[dict]:
+async def get_files_by_lesson(
+    conn: psycopg.AsyncConnection, lesson_id: UUID
+) -> list[dict]:
     """Список материалов и ссылок к уроку."""
     query = "SELECT * FROM files WHERE lesson_id = %s ORDER BY created_at ASC;"
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -873,7 +988,9 @@ async def get_files_by_lesson(conn: psycopg.AsyncConnection, lesson_id: UUID) ->
         return await cur.fetchall()
 
 
-async def get_files_by_submission(conn: psycopg.AsyncConnection, submission_id: UUID) -> list[dict]:
+async def get_files_by_submission(
+    conn: psycopg.AsyncConnection, submission_id: UUID
+) -> list[dict]:
     """Список файлов, прикрепленных студентом к сдаче задания."""
     query = "SELECT * FROM files WHERE submission_id = %s ORDER BY created_at ASC;"
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -903,17 +1020,26 @@ async def lock_submission_files(conn, file_ids, user_id, submission_id=None):
     if not file_ids:
         return True
     async with conn.cursor(row_factory=dict_row) as cur:
-        await cur.execute("SELECT * FROM files WHERE id = ANY(%s) ORDER BY id FOR UPDATE", (file_ids,))
+        await cur.execute(
+            "SELECT * FROM files WHERE id = ANY(%s) ORDER BY id FOR UPDATE", (file_ids,)
+        )
         rows = await cur.fetchall()
     return len(rows) == len(file_ids) and all(
-        r['uploader_id'] == user_id and r['lesson_id'] is None
-        and (r['submission_id'] is None or r['submission_id'] == submission_id)
-        and ((r.get('meta') or {}).get('storage') != 's3'
-             or (r.get('meta') or {}).get('upload_status') == 'ready')
-        for r in rows)
+        r["uploader_id"] == user_id
+        and r["lesson_id"] is None
+        and (r["submission_id"] is None or r["submission_id"] == submission_id)
+        and (
+            (r.get("meta") or {}).get("storage") != "s3"
+            or (r.get("meta") or {}).get("upload_status") == "ready"
+        )
+        for r in rows
+    )
 
 
 async def attach_submission_files(conn, file_ids, submission_id):
     if file_ids:
         async with conn.cursor() as cur:
-            await cur.execute("UPDATE files SET submission_id = %s WHERE id = ANY(%s)", (submission_id, file_ids))
+            await cur.execute(
+                "UPDATE files SET submission_id = %s WHERE id = ANY(%s)",
+                (submission_id, file_ids),
+            )

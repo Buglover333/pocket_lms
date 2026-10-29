@@ -11,7 +11,7 @@ from uuid import UUID
 import jwt
 from fastapi import HTTPException
 
-TOKEN_TTL = timedelta(hours=12)
+TOKEN_TTL = timedelta(minutes=15)
 
 
 def _secret_key() -> str:
@@ -19,6 +19,11 @@ def _secret_key() -> str:
     if not value:
         raise HTTPException(status_code=503, detail="JWT_SECRET не настроен")
     return value
+
+
+def ensure_token_configuration() -> None:
+    """Fail before committing any session rotation when signing is unavailable."""
+    _secret_key()
 
 
 def _b64(data: bytes) -> str:
@@ -45,27 +50,43 @@ def verify_password(password: str, stored: str | None) -> bool:
         return False
 
 
-def make_token(user_id: UUID) -> str:
+def secret_digest(value: str) -> str:
+    return hashlib.sha256(value.encode()).hexdigest()
+
+
+def make_token(user_id: UUID, session_id: UUID) -> str:
     now = datetime.now(timezone.utc)
     return jwt.encode(
-        {"sub": str(user_id), "iat": now, "exp": now + TOKEN_TTL},
+        {
+            "sub": str(user_id),
+            "sid": str(session_id),
+            "type": "access",
+            "iat": now,
+            "exp": now + TOKEN_TTL,
+        },
         _secret_key(),
         algorithm="HS256",
     )
 
 
-def token_user_id(token: str) -> UUID:
+def token_claims(token: str) -> tuple[UUID, UUID]:
     try:
         payload = jwt.decode(
             token,
             _secret_key(),
             algorithms=["HS256"],
-            options={"require": ["sub", "iat", "exp"]},
+            options={"require": ["sub", "sid", "type", "iat", "exp"]},
         )
-        return UUID(payload["sub"])
+        if payload["type"] != "access":
+            raise ValueError("Wrong token type")
+        return UUID(payload["sub"]), UUID(payload["sid"])
     except (jwt.InvalidTokenError, ValueError, TypeError, AttributeError) as exc:
         raise HTTPException(
-            status_code=401,
-            detail="Недействительный или просроченный токен",
+            401,
+            "Недействительный или просроченный токен",
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
+
+
+def token_user_id(token: str) -> UUID:
+    return token_claims(token)[0]

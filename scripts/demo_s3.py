@@ -21,7 +21,7 @@ import requests
 from botocore.exceptions import ClientError
 from moto.server import ThreadedMotoServer
 
-from backend.services import storage
+from backend.s3 import storage
 
 
 def print_step(num: int, title: str):

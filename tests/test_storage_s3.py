@@ -16,7 +16,7 @@ from backend.api.dependencies import (
     get_mock_current_user,
 )
 from backend.api.main import app
-from backend.services import storage
+from backend.s3 import storage
 
 
 class StorageServiceUnitTests(unittest.TestCase):
@@ -45,7 +45,7 @@ class StorageServiceUnitTests(unittest.TestCase):
                 storage.configuration()
             self.assertEqual(ctx.exception.status_code, 503)
 
-    @patch("backend.services.storage.boto3.client")
+    @patch("backend.s3.storage.boto3.client")
     def test_configuration_with_credentials(self, mock_boto):
         mock_client = MagicMock()
         mock_boto.return_value = mock_client
@@ -59,7 +59,7 @@ class StorageServiceUnitTests(unittest.TestCase):
         self.assertEqual(kwargs["aws_secret_access_key"], "minioadmin")
         self.assertEqual(kwargs["region_name"], "us-east-1")
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_upload_url_generates_presigned_post(self, mock_cfg):
         mock_client = MagicMock()
         mock_client.generate_presigned_post.return_value = {
@@ -80,7 +80,7 @@ class StorageServiceUnitTests(unittest.TestCase):
             ExpiresIn=storage.TTL,
         )
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_download_url_generates_presigned_get(self, mock_cfg):
         mock_client = MagicMock()
         mock_client.generate_presigned_url.return_value = "http://localhost:9000/signed-download"
@@ -98,14 +98,14 @@ class StorageServiceUnitTests(unittest.TestCase):
             ExpiresIn=storage.TTL,
         )
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_download_url_wrong_bucket_raises_403(self, mock_cfg):
         mock_cfg.return_value = (MagicMock(), "allowed-bucket")
         with self.assertRaises(HTTPException) as ctx:
             storage.download_url("foreign-bucket", "some-key")
         self.assertEqual(ctx.exception.status_code, 403)
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_verify_upload_success(self, mock_cfg):
         mock_client = MagicMock()
         mock_client.head_object.return_value = {
@@ -117,7 +117,7 @@ class StorageServiceUnitTests(unittest.TestCase):
         storage.verify_upload(self.bucket, "uploads/key", 1024, "application/pdf")
         mock_client.head_object.assert_called_once_with(Bucket=self.bucket, Key="uploads/key")
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_verify_upload_size_mismatch(self, mock_cfg):
         mock_client = MagicMock()
         mock_client.head_object.return_value = {
@@ -130,7 +130,7 @@ class StorageServiceUnitTests(unittest.TestCase):
             storage.verify_upload(self.bucket, "uploads/key", 1024, "application/pdf")
         self.assertEqual(ctx.exception.status_code, 409)
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_verify_upload_not_found(self, mock_cfg):
         mock_client = MagicMock()
         error_resp = {"Error": {"Code": "404", "Message": "Not Found"}}
@@ -142,7 +142,7 @@ class StorageServiceUnitTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 409)
         self.assertIn("ещё не загружен", ctx.exception.detail)
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_delete_file_from_s3(self, mock_cfg):
         mock_client = MagicMock()
         mock_cfg.return_value = (mock_client, self.bucket)
@@ -150,7 +150,7 @@ class StorageServiceUnitTests(unittest.TestCase):
         storage.delete_file_from_s3(self.bucket, "uploads/123/file.pdf")
         mock_client.delete_object.assert_called_once_with(Bucket=self.bucket, Key="uploads/123/file.pdf")
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_ensure_bucket_exists_when_bucket_already_exists(self, mock_cfg):
         mock_client = MagicMock()
         mock_cfg.return_value = (mock_client, self.bucket)
@@ -159,7 +159,7 @@ class StorageServiceUnitTests(unittest.TestCase):
         mock_client.head_bucket.assert_called_once_with(Bucket=self.bucket)
         mock_client.create_bucket.assert_not_called()
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_ensure_bucket_exists_when_bucket_missing(self, mock_cfg):
         mock_client = MagicMock()
         error_resp = {"Error": {"Code": "404", "Message": "Not Found"}}
@@ -211,7 +211,7 @@ class FilesAuthAndRouterTests(unittest.TestCase):
     def test_mock_get_current_user_with_dev_token(self):
         """Проверка изолированной заглушки: при передаче dev-токена возвращается mock-пользователь."""
         with patch("backend.api.routers.files.attachment_write_access"):
-            with patch("backend.services.storage.upload_url", return_value=("test-bucket", {"url": "http://minio/upload", "fields": {}})):
+            with patch("backend.s3.storage.upload_url", return_value=("test-bucket", {"url": "http://minio/upload", "fields": {}})):
                 with patch("backend.db.methods.create_file", return_value={"id": uuid4()}):
                     resp = self.client.post(
                         "/create_file_upload",
@@ -235,7 +235,7 @@ class FilesAuthAndRouterTests(unittest.TestCase):
         }
         with patch("backend.api.routers.files.file_access", return_value=fake_record):
             with patch("backend.db.methods.delete_file", return_value=True):
-                with patch("backend.services.storage.delete_file_from_s3") as mock_s3_del:
+                with patch("backend.s3.storage.delete_file_from_s3") as mock_s3_del:
                     resp = self.client.delete(
                         "/delete_file",
                         params={"file_id": str(file_id)},

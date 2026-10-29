@@ -83,7 +83,7 @@ tests/test_crud.py учитывает TEST_DATABASE_URL; без этой пер�
 - src/backend/api/main.py — только сборка приложения и подключение роутеров.
 - src/backend/api/routers/ — HTTP-обработчики всех перечисленных разделов.
 - src/backend/api/access.py — общие проверки доступа к объектам.
-- src/backend/services/storage.py — приватное S3-хранилище.
+- src/backend/s3/storage.py — приватное S3-хранилище.
 - src/backend/api/dependencies.py — получение подключения и проверка текущего пользователя.
 - src/backend/api/security.py — хеширование паролей и JWT.
 - src/backend/db/connection.py — подключение к PostgreSQL и границы транзакции.

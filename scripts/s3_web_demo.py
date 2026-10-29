@@ -22,7 +22,7 @@ from fastapi.responses import HTMLResponse
 from moto.server import ThreadedMotoServer
 import uvicorn
 
-from backend.services import storage
+from backend.s3 import storage
 
 S3_PORT = 9005
 WEB_PORT = 8080

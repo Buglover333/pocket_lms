@@ -20,7 +20,7 @@ from backend.api.dependencies import (
     get_mock_current_user,
 )
 from backend.api.main import app
-from backend.services import storage
+from backend.s3 import storage
 
 
 def find_free_port() -> int:
@@ -56,7 +56,7 @@ class StorageServiceUnitTests(unittest.TestCase):
             self.assertEqual(ctx.exception.status_code, 503)
             self.assertIn("S3_BUCKET не настроен", ctx.exception.detail)
 
-    @patch("backend.services.storage.boto3.client")
+    @patch("backend.s3.storage.boto3.client")
     def test_configuration_with_credentials(self, mock_boto):
         mock_client = MagicMock()
         mock_boto.return_value = mock_client
@@ -70,7 +70,7 @@ class StorageServiceUnitTests(unittest.TestCase):
         self.assertEqual(kwargs["aws_secret_access_key"], "minioadmin")
         self.assertEqual(kwargs["region_name"], "us-east-1")
 
-    @patch("backend.services.storage.boto3.client")
+    @patch("backend.s3.storage.boto3.client")
     def test_configuration_empty_string_endpoint_fallback_to_none(self, mock_boto):
         with patch.dict(os.environ, {"S3_ENDPOINT_URL": "", "AWS_ACCESS_KEY_ID": "", "AWS_SECRET_ACCESS_KEY": ""}):
             storage.configuration()
@@ -79,7 +79,7 @@ class StorageServiceUnitTests(unittest.TestCase):
             self.assertIsNone(kwargs["aws_access_key_id"])
             self.assertIsNone(kwargs["aws_secret_access_key"])
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_ensure_bucket_exists_when_bucket_already_exists(self, mock_cfg):
         mock_client = MagicMock()
         mock_cfg.return_value = (mock_client, self.bucket)
@@ -88,7 +88,7 @@ class StorageServiceUnitTests(unittest.TestCase):
         mock_client.head_bucket.assert_called_once_with(Bucket=self.bucket)
         mock_client.create_bucket.assert_not_called()
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_ensure_bucket_exists_when_bucket_missing_us_east_1(self, mock_cfg):
         mock_client = MagicMock()
         error_resp = {"Error": {"Code": "404", "Message": "Not Found"}}
@@ -99,7 +99,7 @@ class StorageServiceUnitTests(unittest.TestCase):
         mock_client.head_bucket.assert_called_once_with(Bucket=self.bucket)
         mock_client.create_bucket.assert_called_once_with(Bucket=self.bucket)
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_ensure_bucket_exists_when_bucket_missing_other_region(self, mock_cfg):
         mock_client = MagicMock()
         error_resp = {"Error": {"Code": "NoSuchBucket", "Message": "Not Found"}}
@@ -114,7 +114,7 @@ class StorageServiceUnitTests(unittest.TestCase):
                 CreateBucketConfiguration={"LocationConstraint": "eu-central-1"},
             )
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_ensure_bucket_exists_permission_denied(self, mock_cfg):
         mock_client = MagicMock()
         error_resp = {"Error": {"Code": "403", "Message": "Forbidden"}}
@@ -126,7 +126,7 @@ class StorageServiceUnitTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 503)
         self.assertIn("Ошибка инициализации S3 бакета", ctx.exception.detail)
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_ensure_bucket_exists_endpoint_connection_error(self, mock_cfg):
         mock_client = MagicMock()
         mock_client.head_bucket.side_effect = EndpointConnectionError(endpoint_url="http://bad-host:9000")
@@ -136,7 +136,7 @@ class StorageServiceUnitTests(unittest.TestCase):
             storage.ensure_bucket_exists(self.bucket)
         self.assertEqual(ctx.exception.status_code, 503)
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_upload_url_conditions_and_fields(self, mock_cfg):
         mock_client = MagicMock()
         mock_client.generate_presigned_post.return_value = {
@@ -156,7 +156,7 @@ class StorageServiceUnitTests(unittest.TestCase):
             ExpiresIn=storage.TTL,
         )
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_upload_url_client_error_raises_503(self, mock_cfg):
         mock_client = MagicMock()
         mock_client.generate_presigned_post.side_effect = ClientError({"Error": {"Code": "500"}}, "Generate")
@@ -167,7 +167,7 @@ class StorageServiceUnitTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 503)
         self.assertEqual(ctx.exception.detail, "Хранилище недоступно")
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_download_url_generates_presigned_get(self, mock_cfg):
         mock_client = MagicMock()
         mock_client.generate_presigned_url.return_value = "http://localhost:9000/signed-download"
@@ -185,7 +185,7 @@ class StorageServiceUnitTests(unittest.TestCase):
             ExpiresIn=storage.TTL,
         )
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_download_url_no_filename(self, mock_cfg):
         mock_client = MagicMock()
         mock_client.generate_presigned_url.return_value = "http://localhost:9000/signed-download"
@@ -199,7 +199,7 @@ class StorageServiceUnitTests(unittest.TestCase):
             ExpiresIn=storage.TTL,
         )
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_download_url_escapes_quotes_and_special_chars(self, mock_cfg):
         mock_client = MagicMock()
         mock_client.generate_presigned_url.return_value = "http://localhost:9000/signed-download"
@@ -212,7 +212,7 @@ class StorageServiceUnitTests(unittest.TestCase):
             'attachment; filename="my _cool_ file.pdf"; filename*=UTF-8\'\'my%20%22cool%22%20file.pdf',
         )
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_download_url_wrong_bucket_raises_403(self, mock_cfg):
         mock_cfg.return_value = (MagicMock(), "allowed-bucket")
         with self.assertRaises(HTTPException) as ctx:
@@ -220,7 +220,7 @@ class StorageServiceUnitTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 403)
         self.assertEqual(ctx.exception.detail, "Недопустимое хранилище")
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_verify_upload_success(self, mock_cfg):
         mock_client = MagicMock()
         mock_client.head_object.return_value = {
@@ -232,14 +232,14 @@ class StorageServiceUnitTests(unittest.TestCase):
         storage.verify_upload(self.bucket, "uploads/key", 1024, "application/pdf")
         mock_client.head_object.assert_called_once_with(Bucket=self.bucket, Key="uploads/key")
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_verify_upload_foreign_bucket_raises_403(self, mock_cfg):
         mock_cfg.return_value = (MagicMock(), "my-bucket")
         with self.assertRaises(HTTPException) as ctx:
             storage.verify_upload("alien-bucket", "uploads/key", 1024, "application/pdf")
         self.assertEqual(ctx.exception.status_code, 403)
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_verify_upload_size_mismatch(self, mock_cfg):
         mock_client = MagicMock()
         mock_client.head_object.return_value = {
@@ -253,7 +253,7 @@ class StorageServiceUnitTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 409)
         self.assertEqual(ctx.exception.detail, "Размер или тип загруженного файла не совпадает")
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_verify_upload_mime_mismatch(self, mock_cfg):
         mock_client = MagicMock()
         mock_client.head_object.return_value = {
@@ -266,7 +266,7 @@ class StorageServiceUnitTests(unittest.TestCase):
             storage.verify_upload(self.bucket, "uploads/key", 1024, "application/pdf")
         self.assertEqual(ctx.exception.status_code, 409)
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_verify_upload_not_found_404(self, mock_cfg):
         mock_client = MagicMock()
         error_resp = {"Error": {"Code": "404", "Message": "Not Found"}}
@@ -278,7 +278,7 @@ class StorageServiceUnitTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 409)
         self.assertIn("ещё не загружен", ctx.exception.detail)
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_verify_upload_not_found_NoSuchKey(self, mock_cfg):
         mock_client = MagicMock()
         error_resp = {"Error": {"Code": "NoSuchKey", "Message": "Not Found"}}
@@ -289,7 +289,7 @@ class StorageServiceUnitTests(unittest.TestCase):
             storage.verify_upload(self.bucket, "uploads/key", 1024, "application/pdf")
         self.assertEqual(ctx.exception.status_code, 409)
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_verify_upload_s3_error_500(self, mock_cfg):
         mock_client = MagicMock()
         error_resp = {"Error": {"Code": "500", "Message": "Internal Server Error"}}
@@ -300,7 +300,7 @@ class StorageServiceUnitTests(unittest.TestCase):
             storage.verify_upload(self.bucket, "uploads/key", 1024, "application/pdf")
         self.assertEqual(ctx.exception.status_code, 503)
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_delete_file_from_s3_success(self, mock_cfg):
         mock_client = MagicMock()
         mock_cfg.return_value = (mock_client, self.bucket)
@@ -308,14 +308,14 @@ class StorageServiceUnitTests(unittest.TestCase):
         storage.delete_file_from_s3(self.bucket, "uploads/123/file.pdf")
         mock_client.delete_object.assert_called_once_with(Bucket=self.bucket, Key="uploads/123/file.pdf")
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_delete_file_from_s3_foreign_bucket_raises_403(self, mock_cfg):
         mock_cfg.return_value = (MagicMock(), "my-bucket")
         with self.assertRaises(HTTPException) as ctx:
             storage.delete_file_from_s3("alien-bucket", "uploads/key")
         self.assertEqual(ctx.exception.status_code, 403)
 
-    @patch("backend.services.storage.configuration")
+    @patch("backend.s3.storage.configuration")
     def test_delete_file_from_s3_error_raises_503(self, mock_cfg):
         mock_client = MagicMock()
         mock_client.delete_object.side_effect = ClientError({"Error": {"Code": "500"}}, "DeleteObject")
@@ -920,7 +920,7 @@ class LiveS3EndToEndHttpTests(unittest.TestCase):
             "mime_type": "application/pdf",
             "meta": {"storage": "s3", "bucket": self.bucket, "key": "uploads/user/file.pdf"},
         }
-        with patch("backend.services.storage.configuration") as mock_cfg:
+        with patch("backend.s3.storage.configuration") as mock_cfg:
             mock_client = MagicMock()
             mock_client.head_object.side_effect = EndpointConnectionError(endpoint_url="http://s3.local")
             mock_client.delete_object.side_effect = EndpointConnectionError(endpoint_url="http://s3.local")

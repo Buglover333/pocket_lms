@@ -176,11 +176,11 @@ class APIReviewTests(unittest.TestCase):
         self.assertEqual(record['meta']['upload_status'],'pending')
 
     def test_s3_policy_limits_content_type_size_and_expiry(self):
-        from backend.services import storage
+        from backend.s3 import storage
         from unittest.mock import MagicMock
         client=MagicMock()
         client.generate_presigned_post.return_value={'url':'https://storage.example/upload','fields':{}}
-        with patch('backend.services.storage.configuration',return_value=(client,'private-bucket')):
+        with patch('backend.s3.storage.configuration',return_value=(client,'private-bucket')):
             storage.upload_url('uploads/owner/random','application/pdf')
         call=client.generate_presigned_post.call_args.kwargs
         self.assertEqual(call['ExpiresIn'],300)

@@ -12,7 +12,7 @@ from backend.api.errors import PROTECTED_ERRORS
 from backend.db import methods
 from backend.schemas.api import FileDownloadResponse, FileUploadRequest, FileUploadResponse
 from backend.schemas.data import FileCreateRequest, FileResponse
-from backend.services import storage
+from backend.s3 import storage
 
 router = APIRouter(tags=["Файлы"], responses=PROTECTED_ERRORS)
 

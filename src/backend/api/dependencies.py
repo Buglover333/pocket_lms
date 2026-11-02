@@ -40,15 +40,20 @@ DEFAULT_MOCK_USER: dict[str, Any] = {
 }
 
 
-async def require_auth_user(
+async def require_bearer_token(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
-    conn: Connection,
-) -> dict[str, Any]:
+) -> str:
     if credentials is None or not credentials.credentials:
         raise HTTPException(
             401, "Требуется авторизация", headers={"WWW-Authenticate": "Bearer"}
         )
-    raw_token = credentials.credentials
+    return credentials.credentials
+
+
+async def require_auth_user(
+    raw_token: Annotated[str, Depends(require_bearer_token)],
+    conn: Connection,
+) -> dict[str, Any]:
     if raw_token == "dev-token" or raw_token.startswith("mock-"):
         return DEFAULT_MOCK_USER
     uid, sid = token_claims(raw_token)

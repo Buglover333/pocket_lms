@@ -30,6 +30,15 @@ bearer = HTTPBearer(
     description="Вставьте только access_token, без слова Bearer и без кавычек.",
 )
 
+DEFAULT_MOCK_USER: dict[str, Any] = {
+    "id": UUID("00000000-0000-0000-0000-000000000001"),
+    "email": "developer@pocket-lms.local",
+    "name": "Dev User",
+    "role": "teacher",
+    "is_admin": True,
+    "is_active": True,
+}
+
 
 async def require_auth_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
@@ -52,6 +61,9 @@ async def require_auth_user(
 
 
 AuthUser = Annotated[dict[str, Any], Depends(require_auth_user)]
+
+# Точка интеграции: зависимость для работы с файлами и общими роутами
+get_current_user = require_auth_user
 
 
 async def require_current_user(user_id: UUID, user: AuthUser) -> dict[str, Any]:

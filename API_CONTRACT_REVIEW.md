@@ -1012,6 +1012,7 @@ Create Assignment
 | `template_file_id` | uuid / null | Нет | Шаблон / методичка из files |
 | `is_published` | boolean | Нет | Опубликовано ли задание |
 | `lesson_id` | uuid | Да | К какому уроку привязано задание |
+| `student_ids` | array<uuid> / null | Нет | Список ID студентов (user_id или member_id) для назначения при target_type='selective' |
 
 Пример тела запроса:
 
@@ -1061,6 +1062,7 @@ Update Assignment
 | `due_date` | date-time / null | Нет |  |
 | `template_file_id` | uuid / null | Нет |  |
 | `is_published` | boolean / null | Нет |  |
+| `student_ids` | array<uuid> / null | Нет | Список ID студентов (user_id или member_id) для назначения при target_type='selective' |
 
 Пример тела запроса:
 
@@ -1509,7 +1511,7 @@ JSON-тело не передаётся.
 
 ## POST /upload_file
 
-Upload File
+Регистрация внешней ссылки на файл (не S3).
 
 
 Поля JSON:
@@ -1555,7 +1557,7 @@ Upload File
 
 ## GET /get_file
 
-Get File
+Получение метаданных файла.
 
 | Параметр | Где | Тип | Обязателен |
 |---|---|---|---|
@@ -1583,7 +1585,7 @@ JSON-тело не передаётся.
 
 ## DELETE /delete_file
 
-Delete File
+Удаление файла из базы данных и физическое удаление из S3 (если файл хранился в S3).
 
 | Параметр | Где | Тип | Обязателен |
 |---|---|---|---|
@@ -1599,7 +1601,7 @@ JSON-тело не передаётся.
 
 ## POST /create_file_upload
 
-Create File Upload
+Инициализация загрузки файла в S3 (получение presigned POST url).
 
 
 Поля JSON:
@@ -1641,7 +1643,7 @@ Create File Upload
 
 ## POST /complete_file_upload
 
-Complete File Upload
+Подтверждение загрузки в S3 после завершения передачи клиентом.
 
 | Параметр | Где | Тип | Обязателен |
 |---|---|---|---|
@@ -1669,7 +1671,7 @@ JSON-тело не передаётся.
 
 ## GET /get_file_download
 
-Get File Download
+Получение presigned ссылки на скачивание файла из S3.
 
 | Параметр | Где | Тип | Обязателен |
 |---|---|---|---|

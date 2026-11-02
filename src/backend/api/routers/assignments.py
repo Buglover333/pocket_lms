@@ -74,7 +74,26 @@ async def create_assignment(
         raise HTTPException(
             status_code=403, detail="Только преподаватель курса может создавать задания"
         )
-    return await methods.create_assignment(conn, data, created_by=user["id"])
+
+    if data.student_ids and data.target_type == "all":
+        data = data.model_copy(update={"target_type": "selective"})
+
+    resolved_members: list[UUID] = []
+    if data.student_ids is not None:
+        resolved_members, missing = await methods.resolve_course_member_ids(conn, disc_id, data.student_ids)
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Студенты не найдены среди участников курса: {', '.join(str(m) for m in missing)}",
+            )
+
+    created = await methods.create_assignment(conn, data, created_by=user["id"])
+
+    if data.student_ids is not None:
+        targets = await methods.set_assignment_targets(conn, created["id"], resolved_members)
+        created = {**created, "student_ids": [t["user_id"] for t in targets]}
+
+    return created
 
 
 @router.patch("/update_assignment", response_model=AssignmentResponse)
@@ -96,7 +115,31 @@ async def update_assignment(
             status_code=403,
             detail="Только преподаватель курса может редактировать задания",
         )
+
+    if data.student_ids is not None and data.target_type is None and assignment.get("target_type") != "selective":
+        data = data.model_copy(update={"target_type": "selective"})
+
+    resolved_members: list[UUID] | None = None
+    if data.student_ids is not None:
+        resolved_members, missing = await methods.resolve_course_member_ids(conn, disc_id, data.student_ids)
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Студенты не найдены среди участников курса: {', '.join(str(m) for m in missing)}",
+            )
+
     updated = await methods.update_assignment(conn, assignment_id, data)
+
+    if resolved_members is not None:
+        targets = await methods.set_assignment_targets(conn, assignment_id, resolved_members)
+        updated = {**updated, "student_ids": [t["user_id"] for t in targets]}
+    elif data.target_type == "all":
+        await methods.clear_assignment_targets(conn, assignment_id)
+        updated = {**updated, "student_ids": []}
+    elif updated.get("target_type") == "selective":
+        targets = await methods.get_assignment_targets(conn, assignment_id)
+        updated = {**updated, "student_ids": [t["user_id"] for t in targets]}
+
     return updated
 
 

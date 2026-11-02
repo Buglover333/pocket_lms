@@ -408,6 +408,21 @@ class AssignmentBase(BaseModel):
 
 class AssignmentCreateRequest(AssignmentBase):
     lesson_id: UUID = Field(..., description="К какому уроку привязано задание")
+    student_ids: list[UUID] | None = Field(
+        default=None,
+        description="Список ID студентов (user_id или member_id) для назначения при target_type='selective'",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_student_ids_alias(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "student_ids" not in data:
+                if "target_student_ids" in data:
+                    data["student_ids"] = data["target_student_ids"]
+                elif "member_ids" in data:
+                    data["student_ids"] = data["member_ids"]
+        return data
 
 
 class AssignmentUpdateRequest(BaseModel):
@@ -419,6 +434,21 @@ class AssignmentUpdateRequest(BaseModel):
     due_date: datetime | None = None
     template_file_id: UUID | None = None
     is_published: bool | None = None
+    student_ids: list[UUID] | None = Field(
+        default=None,
+        description="Список ID студентов (user_id или member_id) для назначения при target_type='selective'",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_student_ids_alias(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "student_ids" not in data:
+                if "target_student_ids" in data:
+                    data["student_ids"] = data["target_student_ids"]
+                elif "member_ids" in data:
+                    data["student_ids"] = data["member_ids"]
+        return data
 
 
 class AssignmentResponse(AssignmentBase):
@@ -427,6 +457,10 @@ class AssignmentResponse(AssignmentBase):
     lesson_id: UUID
     created_at: datetime
     updated_at: datetime | None = None
+    student_ids: list[UUID] | None = Field(
+        default=None,
+        description="Список ID студентов, которым персонально назначено задание",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

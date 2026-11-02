@@ -1,9 +1,12 @@
+import sys
 from pathlib import Path
 import json
+root = Path(__file__).resolve().parents[1]
+if str(root / "src") not in sys.path:
+    sys.path.insert(0, str(root / "src"))
 from backend.api.main import app
-root=Path.cwd()
 spec=app.openapi()
-(root/'openapi.json').write_text(json.dumps(spec,ensure_ascii=False,indent=2)+'\n')
+(root/'openapi.json').write_text(encoding='utf-8', data=json.dumps(spec,ensure_ascii=False,indent=2)+'\n')
 components=spec['components']['schemas']
 def resolved(s):
  while '$ref' in s:s=components[s['$ref'].split('/')[-1]]
@@ -51,7 +54,7 @@ rows=['# HTTP-контракт Pocket LMS: локальная проверка 2
 '', '## Сводный список','', '| Метод | Путь | Назначение |','|---|---|---|']
 plain=[]
 names={}
-for line in (root/'API_DESCRIPTION.md').read_text().splitlines():
+for line in (root/'API_DESCRIPTION.md').read_text(encoding='utf-8').splitlines():
  cols=[x.strip() for x in line.split('|')]
  if len(cols)>5 and cols[2].startswith('`') and cols[3].startswith('`/'):
   names[(cols[2].strip('`'),cols[3].strip('`'))]=cols[4]
@@ -81,6 +84,6 @@ for path,ops in spec['paths'].items():
    if rs and (rs.get('$ref') or resolved(rs).get('properties')):rows+=['','Пример формы ответа (синтетический):','','```json',json.dumps(example(rs),ensure_ascii=False,indent=2),'```']
    elif rs:rows+=['','Ответ этого существующего маршрута пока типизирован как произвольный JSON-объект. Точный набор полей требует отдельной публичной response-модели; не считать `{}` полным согласованным контрактом.']
   rows+=['','Ошибки: 401 — нет/недействителен токен; 403 — нет доступа; 404 — объект не найден; 422 — неверные входные данные. Для завершения загрузки и повторной сдачи также возможен 409. Для S3 без конфигурации — 503. Конкретные применимые ошибки описаны в обработчиках.']
-(root/'API_CONTRACT_REVIEW.md').write_text('\n'.join(rows)+'\n')
-(root/'docs/ENDPOINTS.txt').write_text('АКТУАЛЬНЫЕ МАРШРУТЫ ЛОКАЛЬНОЙ КОПИИ API — 29.10.2026\n\n'+ '\n'.join(plain)+'\n\nПодробные типы и примеры: API_CONTRACT_REVIEW.md. Ветка: feature/authentication.\n')
+(root/'API_CONTRACT_REVIEW.md').write_text(encoding='utf-8', data='\n'.join(rows)+'\n')
+(root/'docs/ENDPOINTS.txt').write_text(encoding='utf-8', data='АКТУАЛЬНЫЕ МАРШРУТЫ ЛОКАЛЬНОЙ КОПИИ API — 29.10.2026\n\n'+ '\n'.join(plain)+'\n\nПодробные типы и примеры: API_CONTRACT_REVIEW.md. Ветка: feature/authentication.\n')
 print(len(plain),'HTTP operations exported')

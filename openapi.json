@@ -3631,6 +3631,22 @@
             "format": "uuid",
             "title": "Lesson Id",
             "description": "К какому уроку привязано задание"
+          },
+          "student_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Ids",
+            "description": "Список ID студентов (user_id или member_id) для назначения при target_type='selective'"
           }
         },
         "type": "object",
@@ -3735,6 +3751,22 @@
               }
             ],
             "title": "Updated At"
+          },
+          "student_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Ids",
+            "description": "Список ID студентов, которым персонально назначено задание"
           }
         },
         "type": "object",
@@ -3844,6 +3876,22 @@
               }
             ],
             "title": "Is Published"
+          },
+          "student_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Ids",
+            "description": "Список ID студентов (user_id или member_id) для назначения при target_type='selective'"
           }
         },
         "type": "object",

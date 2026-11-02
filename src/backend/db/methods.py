@@ -629,6 +629,7 @@ async def update_assignment(
 ) -> dict | None:
     """Обновить параметры задания."""
     update_data = data.model_dump(exclude_unset=True)
+    update_data.pop("student_ids", None)
     if not update_data:
         return await get_assignment_by_id(conn, assignment_id)
 
@@ -687,6 +688,72 @@ async def remove_assignment_target(conn: psycopg.AsyncConnection, target_id: UUI
     async with conn.cursor() as cur:
         await cur.execute(query, (target_id,))
         return cur.rowcount > 0
+
+
+async def set_assignment_targets(
+    conn: psycopg.AsyncConnection, assignment_id: UUID, member_ids: list[UUID]
+) -> list[dict]:
+    """Синхронизировать персональные назначения задания со списком member_id."""
+    if member_ids:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "DELETE FROM assignment_targets WHERE assignment_id = %s AND NOT (member_id = ANY(%s));",
+                (assignment_id, member_ids),
+            )
+            query = """
+                INSERT INTO assignment_targets (assignment_id, member_id)
+                VALUES (%s, %s)
+                ON CONFLICT (assignment_id, member_id) DO NOTHING;
+            """
+            for mid in member_ids:
+                await cur.execute(query, (assignment_id, mid))
+    else:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "DELETE FROM assignment_targets WHERE assignment_id = %s;",
+                (assignment_id,),
+            )
+    return await get_assignment_targets(conn, assignment_id)
+
+
+async def clear_assignment_targets(
+    conn: psycopg.AsyncConnection, assignment_id: UUID
+) -> bool:
+    """Удалить все персональные назначения задания."""
+    query = "DELETE FROM assignment_targets WHERE assignment_id = %s;"
+    async with conn.cursor() as cur:
+        await cur.execute(query, (assignment_id,))
+        return cur.rowcount > 0
+
+
+async def resolve_course_member_ids(
+    conn: psycopg.AsyncConnection,
+    discipline_id: UUID,
+    student_ids: list[UUID],
+) -> tuple[list[UUID], list[UUID]]:
+    """Находит member_id для переданных user_id или member_id в рамках курса.
+
+    Возвращает (найденные member_id, ненайденные ID).
+    """
+    members = await get_discipline_members(conn, discipline_id)
+    id_to_member_id: dict[UUID, UUID] = {}
+    for m in members:
+        if m.get("status") == "active":
+            id_to_member_id[m["user_id"]] = m["id"]
+            id_to_member_id[m["id"]] = m["id"]
+
+    resolved: list[UUID] = []
+    missing: list[UUID] = []
+    seen = set()
+    for sid in student_ids:
+        if sid in id_to_member_id:
+            mid = id_to_member_id[sid]
+            if mid not in seen:
+                seen.add(mid)
+                resolved.append(mid)
+        else:
+            missing.append(sid)
+    return resolved, missing
 
 
 # ==============================================================================

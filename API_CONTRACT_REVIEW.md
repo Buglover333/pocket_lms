@@ -707,6 +707,7 @@ Create Assignment
 | `template_file_id` | uuid / null | Нет | Шаблон / методичка из files |
 | `is_published` | boolean | Нет | Опубликовано ли задание |
 | `lesson_id` | uuid | Да | К какому уроку привязано задание |
+| `student_ids` | array<uuid> / null | Нет | Список ID студентов (user_id или member_id) для назначения при target_type='selective' |
 
 Пример тела запроса:
 
@@ -756,6 +757,7 @@ Update Assignment
 | `due_date` | date-time / null | Нет |  |
 | `template_file_id` | uuid / null | Нет |  |
 | `is_published` | boolean / null | Нет |  |
+| `student_ids` | array<uuid> / null | Нет | Список ID студентов (user_id или member_id) для назначения при target_type='selective' |
 
 Пример тела запроса:
 

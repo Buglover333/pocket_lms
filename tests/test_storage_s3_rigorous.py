@@ -14,12 +14,11 @@ from fastapi.testclient import TestClient
 import requests
 
 from backend.api.dependencies import (
-    DEFAULT_MOCK_USER,
     get_connection,
     get_current_user,
-    get_mock_current_user,
 )
 from backend.api.main import app
+from auth_helpers import DEFAULT_MOCK_USER, isolated_user_dependency
 from backend.s3 import storage
 
 
@@ -333,6 +332,7 @@ class FilesRouterAccessAndValidationTests(unittest.TestCase):
         self.client = TestClient(app)
         self.fake_conn = AsyncMock()
         app.dependency_overrides[get_connection] = lambda: self.fake_conn
+        app.dependency_overrides[get_current_user] = isolated_user_dependency
         self.user_id = uuid4()
         self.other_user_id = uuid4()
 
@@ -573,6 +573,7 @@ class LiveS3EndToEndHttpTests(unittest.TestCase):
         self.client = TestClient(app)
         self.fake_conn = AsyncMock()
         app.dependency_overrides[get_connection] = lambda: self.fake_conn
+        app.dependency_overrides[get_current_user] = isolated_user_dependency
 
     def tearDown(self):
         self.env_patcher.stop()

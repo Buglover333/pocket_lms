@@ -10,12 +10,11 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from backend.api.dependencies import (
-    DEFAULT_MOCK_USER,
     get_connection,
     get_current_user,
-    get_mock_current_user,
 )
 from backend.api.main import app
+from auth_helpers import DEFAULT_MOCK_USER, isolated_user_dependency
 from backend.s3 import storage
 
 
@@ -186,6 +185,7 @@ class FilesAuthAndRouterTests(unittest.TestCase):
         }
         self.fake_conn = AsyncMock()
         app.dependency_overrides[get_connection] = lambda: self.fake_conn
+        app.dependency_overrides[get_current_user] = isolated_user_dependency
 
     def tearDown(self):
         app.dependency_overrides.clear()

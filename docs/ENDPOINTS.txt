@@ -1,7 +1,7 @@
-АКТУАЛЬНЫЕ МАРШРУТЫ ЛОКАЛЬНОЙ КОПИИ API — 29.10.2026
+АКТУАЛЬНЫЕ МАРШРУТЫ ЛОКАЛЬНОЙ КОПИИ API — 04.11.2026
 
-POST /register — Регистрация нового пользователя
-POST /auth — Вход пользователя (получение токена)
+POST /register — Register
+POST /auth — Authenticate
 POST /auth/refresh — Обновить вход на текущем устройстве
 POST /auth/logout — Выйти на текущем устройстве
 GET /auth/sessions — Посмотреть свои активные устройства
@@ -9,51 +9,52 @@ POST /auth/change_password — Сменить пароль
 POST /admin/password_reset — Выдать одноразовый код восстановления
 POST /auth/reset_password — Восстановить пароль по коду администратора
 PATCH /admin/account_status — Заблокировать или разблокировать аккаунт
-GET /get_user_info — Профиль пользователя
-PATCH /update_settings — Изменение своего имени и фамилии
-GET /get_courses — Курсы текущего пользователя
-GET /get_course_data — Данные курса и список уроков
-POST /create_course — Создание курса
-PATCH /update_course — Редактирование курса
-POST /create_invitation — Генерация/получение кода приглашения
-POST /accept_invitation — Запись на курс по инвайт-коду
+GET /get_user_info — Get User Info
+PATCH /update_settings — Update Settings
+DELETE /delete_account — Деактивировать свой аккаунт
+GET /get_courses — Get Courses
+GET /get_course_data — Get Course Data
+POST /create_course — Create Course
+PATCH /update_course — Update Course
+POST /create_invitation — Create Invitation
+POST /accept_invitation — Accept Invitation
 DELETE /revoke_invitation — Revoke Invitation
 DELETE /remove_course_member — Remove Course Member
-GET /get_members — Список участников курса
-GET /get_modules — Список модулей пользователя
-GET /get_module_data — Данные модуля и его дисциплины
-POST /create_module — Создание модуля
-PATCH /update_module — Редактирование модуля
+GET /get_members — Get Members
+GET /get_modules — Get Modules
+GET /get_module_data — Get Module Data
+POST /create_module — Create Module
+PATCH /update_module — Update Module
 DELETE /remove_module_member — Remove Module Member
-GET /get_materials — Материалы/уроки курса
-GET /get_material_data — Содержимое урока и вложения
-POST /create_material — Создание урока/материала
-PATCH /update_material — Редактирование урока
-DELETE /delete_material — Удаление урока
-GET /get_assignments — Список заданий к уроку
-GET /get_assignment_data — Детали задания, критерии, таргеты
-POST /create_assignment — Создание задания
-PATCH /update_assignment — Редактирование задания
-DELETE /delete_assignment — Удаление задания
-GET /get_calendar — Дедлайны по курсу
-POST /submit_work — Сдача решения задания
-POST /resubmit_work — Повторная сдача работы
-GET /get_submissions — Сдачи выбранного студента по заданию (свои по умолчанию)
-GET /get_submission_data — Детали сдачи и файлы
-POST /grade_submission — Оценивание и фидбек
-POST /return_submission — Возврат работы на доработку
-GET /get_grades — Табель оценок студента
-GET /get_groups — Команды курса
-POST /create_group — Создание команды
-GET /get_team_members — Участники команды
-PATCH /update_group — Редактирование команды
-DELETE /delete_group — Удаление команды
-POST /upload_file — Регистрация внешней HTTP-ссылки
-GET /get_file — Получение метаданных файла
-DELETE /delete_file — Удаление файла
-POST /create_file_upload — Подготовка загрузки в S3: JSON → подписанная форма
-POST /complete_file_upload — Подтверждение загрузки после S3 HEAD
-GET /get_file_download — Временная ссылка на файл после проверки доступа
-POST /app — Отдать frontend приложения
+GET /get_materials — Get Materials
+GET /get_material_data — Get Material Data
+POST /create_material — Create Material
+PATCH /update_material — Update Material
+DELETE /delete_material — Delete Material
+GET /get_assignments — Get Assignments
+GET /get_assignment_data — Get Assignment Data
+POST /create_assignment — Create Assignment
+PATCH /update_assignment — Update Assignment
+DELETE /delete_assignment — Delete Assignment
+GET /get_calendar — Get Calendar
+POST /submit_work — Submit Work
+POST /resubmit_work — Resubmit Work
+GET /get_submissions — Get Submissions
+GET /get_submission_data — Get Submission Data
+POST /grade_submission — Grade Submission
+POST /return_submission — Return Submission
+GET /get_grades — Get Grades
+GET /get_groups — Get Groups
+POST /create_group — Create Group
+GET /get_team_members — Get Team Members
+PATCH /update_group — Update Group
+DELETE /delete_group — Delete Group
+POST /upload_file — Upload File
+GET /get_file — Get File
+DELETE /delete_file — Delete File
+POST /create_file_upload — Create File Upload
+POST /complete_file_upload — Complete File Upload
+GET /get_file_download — Get File Download
+GET /app — Frontend
 
-Подробные типы и примеры: API_CONTRACT_REVIEW.md. Ветка: feature/authentication.
+Подробные типы и примеры: API_CONTRACT_REVIEW.md. Ветка: feature/api-contract-review.

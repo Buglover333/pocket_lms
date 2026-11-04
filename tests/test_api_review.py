@@ -64,7 +64,7 @@ class APIReviewTests(unittest.TestCase):
         self.db.execute("UPDATE assignments SET target_type='selective' WHERE id=%s",(self.assignment,))
         self.assert_error(self.submission(),403)
         r=self.client.get('/get_assignments',params={'lesson_id':self.lesson},headers=self.headers)
-        self.assertEqual(r.json()['items'],[])
+        self.assertEqual(r.json(),[])
         self.db.execute('INSERT INTO assignment_targets (assignment_id,member_id) VALUES (%s,%s)',(self.assignment,self.member))
         self.assertEqual(self.submission().status_code,201)
 
@@ -148,7 +148,7 @@ class APIReviewTests(unittest.TestCase):
         self.assertEqual(r.json()['items'][0]['id'],sid)
         r=self.client.get('/get_grades',params={'course_id':self.course},headers=h)
         self.assertEqual(r.status_code,200,r.text)
-        self.assertEqual(float(r.json()['items'][0]['score']),80)
+        self.assertEqual(float(r.json()[0]['score']),80)
         self.db.execute("UPDATE discipline_members SET status='left' WHERE user_id=%s",(teammate['id'],))
         self.assert_error(self.client.get('/get_submission_data',params={'submission_id':sid},headers=h),403)
 
@@ -241,7 +241,7 @@ class APIReviewTests(unittest.TestCase):
         params = {'course_id': self.course, 'user_id': self.user['id']}
         r = self.client.get('/get_grades', params=params, headers=self.teacher_headers)
         self.assertEqual(r.status_code, 200, r.text)
-        self.assertEqual(float(r.json()['items'][0]['score']), 75)
+        self.assertEqual(float(r.json()[0]['score']), 75)
         outsider = self.create_user()
         self.db.execute('INSERT INTO discipline_members (discipline_id,user_id) VALUES (%s,%s)', (self.course, outsider['id']))
         h = {'Authorization': 'Bearer ' + self.token(outsider['id'])}
@@ -251,12 +251,12 @@ class APIReviewTests(unittest.TestCase):
         self.setup_course()
         params = {'course_id': self.course}
         self.db.execute('UPDATE lessons SET is_published=false WHERE id=%s', (self.lesson,))
-        self.assertEqual(self.client.get('/get_grades', params=params, headers=self.headers).json()['items'], [])
+        self.assertEqual(self.client.get('/get_grades', params=params, headers=self.headers).json(), [])
         self.db.execute('UPDATE lessons SET is_published=true WHERE id=%s', (self.lesson,))
         self.db.execute("UPDATE assignments SET target_type='selective' WHERE id=%s", (self.assignment,))
-        self.assertEqual(self.client.get('/get_grades', params=params, headers=self.headers).json()['items'], [])
+        self.assertEqual(self.client.get('/get_grades', params=params, headers=self.headers).json(), [])
         self.db.execute('INSERT INTO assignment_targets (assignment_id,member_id) VALUES (%s,%s)', (self.assignment, self.member))
-        self.assertEqual(len(self.client.get('/get_grades', params=params, headers=self.headers).json()['items']), 1)
+        self.assertEqual(len(self.client.get('/get_grades', params=params, headers=self.headers).json()), 1)
 
     def test_course_and_material_list_share_publication_rules(self):
         self.setup_course()
@@ -267,8 +267,10 @@ class APIReviewTests(unittest.TestCase):
             materials = self.client.get('/get_materials', params=params, headers=h)
             self.assertEqual(course.status_code, 200, course.text)
             self.assertEqual(materials.status_code, 200, materials.text)
-            self.assertEqual(len(course.json()['lessons']), count)
-            self.assertEqual(course.json()['lessons'], materials.json()['items'])
+            self.assertEqual(course.status_code,200,course.text)
+            self.assertNotIn('lessons',course.json())
+            self.assertNotIn('invite_code',course.json())
+            self.assertEqual(len(materials.json()['items']),count)
         self.db.execute("UPDATE disciplines SET status='draft' WHERE id=%s", (self.course,))
         self.assert_error(self.client.get('/get_course_data', params=params, headers=self.headers), 403)
         self.assertEqual(self.client.get('/get_course_data', params=params, headers=self.teacher_headers).status_code, 200)

@@ -867,6 +867,82 @@
         ]
       }
     },
+    "/delete_account": {
+      "delete": {
+        "tags": [
+          "Пользователи"
+        ],
+        "summary": "Деактивировать свой аккаунт",
+        "operationId": "delete_account_delete_account_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется авторизация",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Запрошены данные другого пользователя",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Пользователь не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/get_courses": {
       "get": {
         "tags": [
@@ -897,7 +973,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CoursesResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CourseItem"
+                  },
+                  "title": "Response Get Courses Get Courses Get"
                 }
               }
             }
@@ -975,9 +1055,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Get Course Data Get Course Data Get"
+                  "$ref": "#/components/schemas/DisciplineResponse"
                 }
               }
             }
@@ -1036,7 +1114,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DisciplineCreateRequest"
+                "$ref": "#/components/schemas/CourseCreateRequest"
               }
             }
           },
@@ -1048,7 +1126,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DisciplineResponse"
+                  "$ref": "#/components/schemas/CourseCreatedResponse"
                 }
               }
             }
@@ -1540,8 +1618,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CourseMemberResponse"
+                  },
                   "title": "Response Get Members Get Members Get"
                 }
               }
@@ -1620,7 +1700,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ModulesResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModuleResponse"
+                  },
+                  "title": "Response Get Modules Get Modules Get"
                 }
               }
             }
@@ -1698,9 +1782,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Get Module Data Get Module Data Get"
+                  "$ref": "#/components/schemas/ModuleDataResponse"
                 }
               }
             }
@@ -2350,9 +2432,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Delete Material Delete Material Delete"
+                  "$ref": "#/components/schemas/SuccessResponse"
                 }
               }
             }
@@ -2430,8 +2510,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssignmentResponse"
+                  },
                   "title": "Response Get Assignments Get Assignments Get"
                 }
               }
@@ -2510,9 +2592,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Get Assignment Data Get Assignment Data Get"
+                  "$ref": "#/components/schemas/AssignmentDataResponse"
                 }
               }
             }
@@ -2754,9 +2834,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Delete Assignment Delete Assignment Delete"
+                  "$ref": "#/components/schemas/SuccessResponse"
                 }
               }
             }
@@ -3450,8 +3528,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GradeResponse"
+                  },
                   "title": "Response Get Grades Get Grades Get"
                 }
               }
@@ -3530,8 +3610,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TeamResponse"
+                  },
                   "title": "Response Get Groups Get Groups Get"
                 }
               }
@@ -3686,8 +3768,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CourseMemberResponse"
+                  },
                   "title": "Response Get Team Members Get Team Members Get"
                 }
               }
@@ -3854,9 +3938,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Delete Group Delete Group Delete"
+                  "$ref": "#/components/schemas/SuccessResponse"
                 }
               }
             }
@@ -4091,9 +4173,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Delete File Delete File Delete"
+                  "$ref": "#/components/schemas/SuccessResponse"
                 }
               }
             }
@@ -4377,12 +4457,12 @@
       }
     },
     "/app": {
-      "post": {
+      "get": {
         "tags": [
           "Приложение"
         ],
         "summary": "Frontend",
-        "operationId": "frontend_app_post",
+        "operationId": "frontend_app_get",
         "responses": {
           "200": {
             "description": "Собранный frontend",
@@ -4535,6 +4615,26 @@
         ],
         "title": "AssignmentCreateRequest"
       },
+      "AssignmentDataResponse": {
+        "properties": {
+          "assignment": {
+            "$ref": "#/components/schemas/AssignmentResponse"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/AssignmentTargetProfileResponse"
+            },
+            "type": "array",
+            "title": "Targets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "assignment",
+          "targets"
+        ],
+        "title": "AssignmentDataResponse"
+      },
       "AssignmentResponse": {
         "properties": {
           "title": {
@@ -4669,6 +4769,59 @@
           "created_at"
         ],
         "title": "AssignmentResponse"
+      },
+      "AssignmentTargetProfileResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "assignment_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Assignment Id"
+          },
+          "member_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Member Id"
+          },
+          "assigned_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Assigned At"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "first_name": {
+            "type": "string",
+            "title": "First Name"
+          },
+          "last_name": {
+            "type": "string",
+            "title": "Last Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "assignment_id",
+          "member_id",
+          "assigned_at",
+          "user_id",
+          "first_name",
+          "last_name",
+          "email"
+        ],
+        "title": "AssignmentTargetProfileResponse"
       },
       "AssignmentUpdateRequest": {
         "properties": {
@@ -4812,7 +4965,7 @@
         "title": "AuthRequest",
         "examples": [
           {
-            "email": "student@example.com",
+            "email": "student@mail.ru",
             "password": "ExamplePass123"
           }
         ]
@@ -4895,6 +5048,224 @@
           "current_password"
         ],
         "title": "ChangePassword"
+      },
+      "CourseCreateRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Title",
+            "description": "Название курса/предмета"
+          },
+          "discipline_type": {
+            "type": "string",
+            "enum": [
+              "module",
+              "core",
+              "elective"
+            ],
+            "title": "Discipline Type",
+            "description": "Тип: модуль программы, общевузовский, электив",
+            "default": "module"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published"
+            ],
+            "title": "Status"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Описание курса и требований"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At",
+            "description": "Дата окончания курса для авто-архивации"
+          },
+          "author_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Author Id"
+          },
+          "module_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Id"
+          },
+          "cover_file_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover File Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "status",
+          "author_id"
+        ],
+        "title": "CourseCreateRequest"
+      },
+      "CourseCreatedResponse": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Title",
+            "description": "Название курса/предмета"
+          },
+          "discipline_type": {
+            "type": "string",
+            "enum": [
+              "module",
+              "core",
+              "elective"
+            ],
+            "title": "Discipline Type",
+            "description": "Тип: модуль программы, общевузовский, электив",
+            "default": "module"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ],
+            "title": "Status",
+            "description": "Статус: черновик, опубликован, архив",
+            "default": "draft"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Описание курса и требований"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At",
+            "description": "Дата окончания курса для авто-архивации"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "module_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Id"
+          },
+          "author_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Author Id"
+          },
+          "cover_file_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover File Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "invite_code": {
+            "type": "string",
+            "title": "Invite Code",
+            "description": "Legacy-код генерируется сервером; для вступления используйте create_invitation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "id",
+          "module_id",
+          "author_id",
+          "cover_file_id",
+          "created_at",
+          "updated_at",
+          "invite_code"
+        ],
+        "title": "CourseCreatedResponse"
       },
       "CourseItem": {
         "properties": {
@@ -4986,12 +5357,36 @@
             ],
             "title": "Cover File Id"
           },
-          "role": {
+          "created_at": {
             "type": "string",
-            "enum": [
-              "owner",
-              "teacher",
-              "student"
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "owner",
+                  "teacher",
+                  "student"
+                ]
+              },
+              {
+                "type": "null"
+              }
             ],
             "title": "Role"
           },
@@ -5015,26 +5410,157 @@
           "module_id",
           "author_id",
           "cover_file_id",
-          "role",
-          "team_id"
+          "created_at",
+          "updated_at"
         ],
         "title": "CourseItem"
       },
-      "CoursesResponse": {
+      "CourseMemberResponse": {
         "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/CourseItem"
-            },
-            "type": "array",
-            "title": "Items"
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "first_name": {
+            "type": "string",
+            "title": "First Name"
+          },
+          "last_name": {
+            "type": "string",
+            "title": "Last Name"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "member_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Member Id"
+          },
+          "discipline_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Discipline Id"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "teacher",
+              "student"
+            ],
+            "title": "Role"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "invited",
+              "left"
+            ],
+            "title": "Status"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
+          "middle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "avatar_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Id"
+          },
+          "enrolled_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Enrolled At"
           }
         },
         "type": "object",
         "required": [
-          "items"
+          "id",
+          "email",
+          "first_name",
+          "last_name",
+          "is_active",
+          "created_at",
+          "user_id",
+          "member_id",
+          "discipline_id",
+          "role",
+          "status",
+          "enrolled_at"
         ],
-        "title": "CoursesResponse"
+        "title": "CourseMemberResponse"
+      },
+      "DeleteAccountRequest": {
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Current Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "current_password"
+        ],
+        "title": "DeleteAccountRequest"
       },
       "DeviceSession": {
         "properties": {
@@ -5077,109 +5603,6 @@
           "current"
         ],
         "title": "DeviceSession"
-      },
-      "DisciplineCreateRequest": {
-        "properties": {
-          "title": {
-            "type": "string",
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "Title",
-            "description": "Название курса/предмета"
-          },
-          "discipline_type": {
-            "type": "string",
-            "enum": [
-              "module",
-              "core",
-              "elective"
-            ],
-            "title": "Discipline Type",
-            "description": "Тип: модуль программы, общевузовский, электив",
-            "default": "module"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "draft",
-              "published",
-              "archived"
-            ],
-            "title": "Status",
-            "description": "Статус: черновик, опубликован, архив",
-            "default": "draft"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description",
-            "description": "Описание курса и требований"
-          },
-          "ends_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ends At",
-            "description": "Дата окончания курса для авто-архивации"
-          },
-          "author_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Author Id",
-            "description": "ID создателя курса (защита от курсов-сирот)"
-          },
-          "invite_code": {
-            "type": "string",
-            "maxLength": 32,
-            "minLength": 1,
-            "title": "Invite Code",
-            "description": "Совместимое поле курса; для записи создайте отдельное приглашение"
-          },
-          "module_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Module Id",
-            "description": "ID модуля (NULL для общевузовских дисциплин и свободных элективов)"
-          },
-          "cover_file_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cover File Id",
-            "description": "ID файла обложки из таблицы files"
-          }
-        },
-        "type": "object",
-        "required": [
-          "title",
-          "author_id"
-        ],
-        "title": "DisciplineCreateRequest"
       },
       "DisciplineResponse": {
         "properties": {
@@ -5259,10 +5682,6 @@
             "format": "uuid",
             "title": "Author Id"
           },
-          "invite_code": {
-            "type": "string",
-            "title": "Invite Code"
-          },
           "cover_file_id": {
             "anyOf": [
               {
@@ -5299,7 +5718,6 @@
           "id",
           "module_id",
           "author_id",
-          "invite_code",
           "cover_file_id",
           "created_at",
           "updated_at"
@@ -5780,6 +6198,127 @@
           "expires_in"
         ],
         "title": "FileUploadResponse"
+      },
+      "GradeResponse": {
+        "properties": {
+          "assignment_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Assignment Id"
+          },
+          "assignment_title": {
+            "type": "string",
+            "title": "Assignment Title"
+          },
+          "max_score": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Max Score"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submission Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "submitted",
+                  "in_review",
+                  "graded",
+                  "returned"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback"
+          },
+          "graded_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graded At"
+          },
+          "attempt_number": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "assignment_id",
+          "assignment_title",
+          "max_score",
+          "due_date",
+          "submission_id",
+          "status",
+          "score",
+          "feedback",
+          "graded_at",
+          "attempt_number"
+        ],
+        "title": "GradeResponse"
       },
       "GradeSubmissionRequest": {
         "properties": {
@@ -6279,7 +6818,7 @@
         ],
         "title": "ModuleCreateRequest"
       },
-      "ModuleItem": {
+      "ModuleDataResponse": {
         "properties": {
           "title": {
             "type": "string",
@@ -6309,15 +6848,41 @@
             "type": "string",
             "format": "uuid",
             "title": "Curator Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "disciplines": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplineResponse"
+            },
+            "type": "array",
+            "title": "Disciplines"
           }
         },
         "type": "object",
         "required": [
           "title",
           "id",
-          "curator_id"
+          "curator_id",
+          "created_at",
+          "disciplines"
         ],
-        "title": "ModuleItem"
+        "title": "ModuleDataResponse"
       },
       "ModuleResponse": {
         "properties": {
@@ -6421,24 +6986,32 @@
         "type": "object",
         "title": "ModuleUpdateRequest"
       },
-      "ModulesResponse": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/ModuleItem"
-            },
-            "type": "array",
-            "title": "Items"
-          }
-        },
-        "type": "object",
-        "required": [
-          "items"
-        ],
-        "title": "ModulesResponse"
-      },
       "ProfileSettingsUpdate": {
         "properties": {
+          "middle_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "avatar_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Id"
+          },
           "first_name": {
             "anyOf": [
               {
@@ -7115,7 +7688,7 @@
         "description": "Public registration input, including password confirmation.",
         "examples": [
           {
-            "email": "student@example.com",
+            "email": "student@mail.ru",
             "first_name": "Анна",
             "last_name": "Иванова",
             "password": "ExamplePass123",

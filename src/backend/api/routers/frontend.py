@@ -1,4 +1,4 @@
-"""Выдача будущей сборки frontend по действующему контракту POST /app."""
+"""Выдача будущей сборки frontend по действующему контракту GET /app."""
 
 import os
 from pathlib import Path
@@ -13,8 +13,9 @@ FRONTEND_DIR = Path(os.getenv("FRONTEND_DIR", str(PROJECT_ROOT / "frontend" / "d
 router = APIRouter(tags=["Приложение"])
 
 
-@router.post(
-    "/app", response_class=FileResponse,
+@router.get(
+    "/app",
+    response_class=FileResponse,
     responses={
         200: {"content": {"text/html": {}}, "description": "Собранный frontend"},
         503: {"model": ErrorResponse, "description": "Frontend ещё не собран"},

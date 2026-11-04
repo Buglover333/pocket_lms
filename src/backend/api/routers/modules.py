@@ -7,24 +7,24 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from backend.api.dependencies import AuthUser, Connection, CurrentUser
 from backend.api.errors import PROTECTED_ERRORS
-from backend.db import methods, invitations
-from backend.schemas.api import ModulesResponse
-from backend.schemas.identity import SuccessResponse
+from backend.db import invitations, methods
+from backend.schemas.api import ModuleDataResponse
 from backend.schemas.data import (
     ModuleCreateRequest,
     ModuleResponse,
     ModuleUpdateRequest,
 )
+from backend.schemas.identity import SuccessResponse
 
 router = APIRouter(tags=["Модули"], responses=PROTECTED_ERRORS)
 
 
-@router.get("/get_modules", response_model=ModulesResponse)
-async def get_modules(user: CurrentUser, conn: Connection) -> dict[str, Any]:
-    return {"items": await methods.get_user_modules(conn, user["id"])}
+@router.get("/get_modules", response_model=list[ModuleResponse])
+async def get_modules(user: CurrentUser, conn: Connection) -> list[dict[str, Any]]:
+    return await methods.get_user_modules(conn, user["id"])
 
 
-@router.get("/get_module_data")
+@router.get("/get_module_data", response_model=ModuleDataResponse)
 async def get_module_data(
     module_id: UUID = Query(...),
     user: AuthUser = None,
@@ -75,7 +75,7 @@ async def get_module_data(
             d_copy.pop("invite_code", None)
         filtered_disciplines.append(d_copy)
 
-    return {"module": module, "disciplines": filtered_disciplines}
+    return {**module, "disciplines": filtered_disciplines}
 
 
 @router.post(

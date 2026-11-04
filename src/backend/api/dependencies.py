@@ -9,8 +9,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.api.security import token_claims
-from backend.db import identity
-from backend.db import methods
+from backend.db import identity, methods
 from backend.db.connection import DatabaseConfigurationError, connection
 
 
@@ -30,15 +29,6 @@ bearer = HTTPBearer(
     description="Вставьте только access_token, без слова Bearer и без кавычек.",
 )
 
-DEFAULT_MOCK_USER: dict[str, Any] = {
-    "id": UUID("00000000-0000-0000-0000-000000000001"),
-    "email": "developer@pocket-lms.local",
-    "name": "Dev User",
-    "role": "teacher",
-    "is_admin": True,
-    "is_active": True,
-}
-
 
 async def require_bearer_token(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
@@ -47,6 +37,7 @@ async def require_bearer_token(
         raise HTTPException(
             401, "Требуется авторизация", headers={"WWW-Authenticate": "Bearer"}
         )
+    token_claims(credentials.credentials)
     return credentials.credentials
 
 
@@ -54,8 +45,6 @@ async def require_auth_user(
     raw_token: Annotated[str, Depends(require_bearer_token)],
     conn: Connection,
 ) -> dict[str, Any]:
-    if raw_token == "dev-token" or raw_token.startswith("mock-"):
-        return DEFAULT_MOCK_USER
     uid, sid = token_claims(raw_token)
     user = await methods.get_user_by_id(conn, uid)
     if user is None or not await identity.session_user(conn, sid, uid):
@@ -72,7 +61,6 @@ AuthUser = Annotated[dict[str, Any], Depends(require_auth_user)]
 
 # Точка интеграции: зависимость для работы с файлами и общими роутами
 get_current_user = require_auth_user
-get_mock_current_user = require_auth_user
 
 
 async def require_current_user(user_id: UUID, user: AuthUser) -> dict[str, Any]:

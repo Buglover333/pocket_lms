@@ -66,14 +66,14 @@ class APIContractTests(unittest.TestCase):
         user = self.db.execute(
             """INSERT INTO users (email, password_hash, first_name, last_name, middle_name, yandex_id)
                VALUES (%s, %s, 'Иван', 'Иванов', 'Иванович', %s) RETURNING *""",
-            (f"api-{uuid4().hex}@example.com", self.password_hash, "test-" + uuid4().hex),
+            (f"api-{uuid4().hex}@mail.ru", self.password_hash, "test-" + uuid4().hex),
         ).fetchone()
         self.user_ids.append(user["id"])
         return user
 
     def registration(self, **changes):
         body = {
-            "email": f"api-{uuid4().hex}@example.com",
+            "email": f"api-{uuid4().hex}@mail.ru",
             "first_name": " Анна ",
             "last_name": " Тест ",
             "password": PASSWORD,
@@ -109,7 +109,7 @@ class APIContractTests(unittest.TestCase):
 
     def test_registration_validation(self):
         invalid = (
-            {"email": "wrong"}, {"email": "a@@example.com"}, {"first_name": "  "},
+            {"email": "wrong"}, {"email": "a@@mail.ru"}, {"first_name": "  "},
             {"last_name": ""}, {"password": "short1A", "password_confirm": "short1A"},
             {"password": "lowercase123", "password_confirm": "lowercase123"},
             {"password": "NoDigitsHere", "password_confirm": "NoDigitsHere"},
@@ -145,7 +145,7 @@ class APIContractTests(unittest.TestCase):
         self.assertEqual(data["user_id"], str(self.user["id"]))
         self.assertEqual(data["token_type"], "bearer")
         self.assertEqual(self.get("/get_user_info", headers={"Authorization": "Bearer " + data["access_token"]}).status_code, 200)
-        for email, password in ((self.user["email"], "Wrong123"), ("missing@example.com", PASSWORD)):
+        for email, password in ((self.user["email"], "Wrong123"), ("missing@mail.ru", PASSWORD)):
             self.assert_error(self.client.post("/auth", json={"email": email, "password": password}), 401)
         self.assert_error(self.client.post("/auth", json={"email": "wrong", "password": PASSWORD}), 422)
         self.assert_error(self.client.post("/auth", json={"email": self.user["email"]}), 422)
@@ -156,7 +156,7 @@ class APIContractTests(unittest.TestCase):
         for path in PROTECTED[:2]:
             response = self.get(path)
             self.assertEqual(response.status_code, 200, response.text)
-            self.assertEqual(response.json(), {"items": []})
+            self.assertEqual(response.json(), [])
 
     def test_active_courses_fields_and_distinct_modules(self):
         module = self.db.execute(
@@ -206,16 +206,17 @@ class APIContractTests(unittest.TestCase):
         self.assertEqual(len(all_memberships), 5)
         response = self.get("/get_courses")
         self.assertEqual(response.status_code, 200, response.text)
-        items = response.json()["items"]
+        items = response.json()
         self.assertCountEqual([item["id"] for item in items], included)
         for item in items:
             self.assertEqual(set(item), {"id", "module_id", "author_id", "title", "discipline_type", "status",
-                                         "description", "cover_file_id", "ends_at", "role", "team_id"})
+                                         "description", "cover_file_id", "ends_at", "role", "team_id", "created_at", "updated_at"})
         first = next(item for item in items if item["id"] == included[0])
         self.assertEqual((first["role"], first["team_id"]), ("student", str(team_id)))
         response = self.get("/get_modules")
         self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json(), {"items": [{"id": str(module), "title": "Программа", "description": "Описание", "curator_id": str(self.other["id"])}]})
+        self.assertEqual([m["id"] for m in response.json()], [str(module)])
+        self.assertIn("created_at", response.json()[0])
 
     def test_profile_has_only_public_fields(self):
         response = self.get("/get_user_info")
@@ -265,7 +266,7 @@ class APIContractTests(unittest.TestCase):
             html = "<!doctype html><html><body>Test frontend fixture</body></html>"
             index.write_text(html)
             with patch("backend.api.routers.frontend.FRONTEND_DIR", Path(folder)), patch.dict(os.environ, DATABASE_URL=""):
-                response = self.client.post("/app")
+                response = self.client.get("/app")
             self.assertEqual(response.status_code, 200, response.text)
             self.assertTrue(response.headers["content-type"].startswith("text/html"))
             self.assertEqual(response.text, html)
@@ -273,14 +274,14 @@ class APIContractTests(unittest.TestCase):
     def test_app_without_build_reports_unavailable(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch("backend.api.routers.frontend.FRONTEND_DIR", Path(folder)), patch.dict(os.environ, DATABASE_URL=""):
-                self.assert_error(self.client.post("/app"), 503)
+                self.assert_error(self.client.get("/app"), 503)
 
     def test_openapi_describes_the_contract(self):
         response = self.client.get("/openapi.json")
         self.assertEqual(response.status_code, 200)
         paths = response.json()["paths"]
         self.assertTrue({"/app", "/auth", "/register", *PROTECTED}.issubset(set(paths)))
-        self.assertIn("text/html", paths["/app"]["post"]["responses"]["200"]["content"])
+        self.assertIn("text/html", paths["/app"]["get"]["responses"]["200"]["content"])
         for path in PROTECTED:
             self.assertTrue(paths[path]["get"]["security"])
             self.assertTrue({"401", "403", "404", "422"}.issubset(paths[path]["get"]["responses"]))

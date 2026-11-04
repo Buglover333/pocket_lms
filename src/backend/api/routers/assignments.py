@@ -5,25 +5,27 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from backend.api.dependencies import AuthUser, Connection, check_is_teacher_or_admin
-from backend.api.errors import PROTECTED_ERRORS
 from backend.api.access import (
-    course_access,
-    material_access,
     assignment_access,
     can_delete_content,
+    course_access,
+    material_access,
 )
+from backend.api.dependencies import AuthUser, Connection, check_is_teacher_or_admin
+from backend.api.errors import PROTECTED_ERRORS
 from backend.db import methods
+from backend.schemas.api import AssignmentDataResponse
 from backend.schemas.data import (
     AssignmentCreateRequest,
     AssignmentResponse,
     AssignmentUpdateRequest,
 )
+from backend.schemas.identity import SuccessResponse
 
 router = APIRouter(tags=["Задания"], responses=PROTECTED_ERRORS)
 
 
-@router.get("/get_assignments")
+@router.get("/get_assignments", response_model=list[AssignmentResponse])
 async def get_assignments(
     lesson_id: UUID = Query(...),
     user: AuthUser = None,
@@ -42,10 +44,10 @@ async def get_assignments(
         except HTTPException as exc:
             if exc.status_code != 403:
                 raise
-    return {"items": visible}
+    return visible
 
 
-@router.get("/get_assignment_data")
+@router.get("/get_assignment_data", response_model=AssignmentDataResponse)
 async def get_assignment_data(
     assignment_id: UUID = Query(...),
     user: AuthUser = None,
@@ -80,7 +82,9 @@ async def create_assignment(
 
     resolved_members: list[UUID] = []
     if data.student_ids is not None:
-        resolved_members, missing = await methods.resolve_course_member_ids(conn, disc_id, data.student_ids)
+        resolved_members, missing = await methods.resolve_course_member_ids(
+            conn, disc_id, data.student_ids
+        )
         if missing:
             raise HTTPException(
                 status_code=422,
@@ -90,7 +94,9 @@ async def create_assignment(
     created = await methods.create_assignment(conn, data, created_by=user["id"])
 
     if data.student_ids is not None:
-        targets = await methods.set_assignment_targets(conn, created["id"], resolved_members)
+        targets = await methods.set_assignment_targets(
+            conn, created["id"], resolved_members
+        )
         created = {**created, "student_ids": [t["user_id"] for t in targets]}
 
     return created
@@ -116,12 +122,18 @@ async def update_assignment(
             detail="Только преподаватель курса может редактировать задания",
         )
 
-    if data.student_ids is not None and data.target_type is None and assignment.get("target_type") != "selective":
+    if (
+        data.student_ids is not None
+        and data.target_type is None
+        and assignment.get("target_type") != "selective"
+    ):
         data = data.model_copy(update={"target_type": "selective"})
 
     resolved_members: list[UUID] | None = None
     if data.student_ids is not None:
-        resolved_members, missing = await methods.resolve_course_member_ids(conn, disc_id, data.student_ids)
+        resolved_members, missing = await methods.resolve_course_member_ids(
+            conn, disc_id, data.student_ids
+        )
         if missing:
             raise HTTPException(
                 status_code=422,
@@ -131,7 +143,9 @@ async def update_assignment(
     updated = await methods.update_assignment(conn, assignment_id, data)
 
     if resolved_members is not None:
-        targets = await methods.set_assignment_targets(conn, assignment_id, resolved_members)
+        targets = await methods.set_assignment_targets(
+            conn, assignment_id, resolved_members
+        )
         updated = {**updated, "student_ids": [t["user_id"] for t in targets]}
     elif data.target_type == "all":
         await methods.clear_assignment_targets(conn, assignment_id)
@@ -143,7 +157,7 @@ async def update_assignment(
     return updated
 
 
-@router.delete("/delete_assignment")
+@router.delete("/delete_assignment", response_model=SuccessResponse)
 async def delete_assignment(
     assignment_id: UUID = Query(...),
     user: AuthUser = None,

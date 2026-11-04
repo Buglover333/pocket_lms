@@ -91,8 +91,8 @@ class AssignmentMethodsUnitTests(unittest.IsolatedAsyncioTestCase):
         missing_id = uuid4()
 
         fake_members = [
-            {"id": member_id_1, "user_id": user_id_1, "status": "active"},
-            {"id": member_id_2, "user_id": user_id_2, "status": "active"},
+            {"id": member_id_1, "user_id": user_id_1, "status": "active", "role":"student"},
+            {"id": member_id_2, "user_id": user_id_2, "status": "active", "role":"student"},
         ]
 
         conn = AsyncMock()

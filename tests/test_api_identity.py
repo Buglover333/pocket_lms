@@ -299,17 +299,17 @@ class IdentityTests(unittest.TestCase):
         self.assertEqual(r.status_code, 201, r.text)
         modules = self.client.get(
             "/get_modules", params={"user_id": self.user["id"]}, headers=self.headers
-        ).json()["items"]
+        ).json()
         self.assertIn(r.json()["id"], [m["id"] for m in modules])
         r = self.client.post(
             "/create_course",
-            json={"title": "Новый", "author_id": str(self.user["id"])},
+            json={"title": "Новый", "author_id": str(self.user["id"]), "status":"draft"},
             headers=self.headers,
         )
         self.assertEqual(r.status_code, 201, r.text)
         courses = self.client.get(
             "/get_courses", params={"user_id": self.user["id"]}, headers=self.headers
-        ).json()["items"]
+        ).json()
         self.assertEqual(courses[0]["role"], "owner")
 
     def test_cannot_add_course_to_foreign_module_or_transfer_creator(self):
@@ -318,7 +318,7 @@ class IdentityTests(unittest.TestCase):
             self.client.post(
                 "/create_course",
                 json={
-                    "title": "Чужой",
+                    "title": "Чужой", "status":"draft",
                     "author_id": str(self.user["id"]),
                     "module_id": str(m["id"]),
                 },
@@ -725,7 +725,7 @@ class IdentityTests(unittest.TestCase):
                 },
                 headers=self.headers,
             ),
-            409,
+            422,
         )
 
     def test_standalone_teacher_can_manage_but_cannot_delete_another_authors_content(

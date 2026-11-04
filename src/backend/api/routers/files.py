@@ -10,9 +10,14 @@ from backend.api.access import file_access, material_access, submission_access
 from backend.api.dependencies import Connection, get_current_user
 from backend.api.errors import PROTECTED_ERRORS
 from backend.db import methods
-from backend.schemas.api import FileDownloadResponse, FileUploadRequest, FileUploadResponse
-from backend.schemas.data import FileCreateRequest, FileResponse
 from backend.s3 import storage
+from backend.schemas.api import (
+    FileDownloadResponse,
+    FileUploadRequest,
+    FileUploadResponse,
+)
+from backend.schemas.data import FileCreateRequest, FileResponse
+from backend.schemas.identity import SuccessResponse
 
 router = APIRouter(tags=["Файлы"], responses=PROTECTED_ERRORS)
 
@@ -28,12 +33,20 @@ async def attachment_write_access(conn, user, lesson_id, submission_id):
             raise HTTPException(403, "Только преподаватель может прикреплять материал")
     if submission_id:
         submission, _, _ = await submission_access(conn, user, submission_id)
-        if submission["submitted_by"] != user["id"] or submission["status"] not in ("draft", "returned"):
+        if submission["submitted_by"] != user["id"] or submission["status"] not in (
+            "draft",
+            "returned",
+        ):
             if not user.get("is_admin"):
-                raise HTTPException(403, "Файлы можно прикреплять к своему черновику или возвращённой работе")
+                raise HTTPException(
+                    403,
+                    "Файлы можно прикреплять к своему черновику или возвращённой работе",
+                )
 
 
-@router.post("/upload_file", response_model=FileResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/upload_file", response_model=FileResponse, status_code=status.HTTP_201_CREATED
+)
 async def upload_file(
     data: FileCreateRequest,
     user: CurrentUser,
@@ -42,7 +55,10 @@ async def upload_file(
     """Регистрация внешней ссылки на файл (не S3)."""
     if data.uploader_id and data.uploader_id != user["id"]:
         raise HTTPException(403, "Нельзя загрузить файл от чужого имени")
-    if data.url.startswith("s3:") or (data.meta and any(k in data.meta for k in ("storage", "bucket", "key", "upload_status"))):
+    if data.url.startswith("s3:") or (
+        data.meta
+        and any(k in data.meta for k in ("storage", "bucket", "key", "upload_status"))
+    ):
         raise HTTPException(422, "Для S3 используйте /create_file_upload")
     if not data.url.startswith(("https://", "http://")):
         raise HTTPException(422, "Ожидается внешняя HTTP-ссылка")
@@ -61,7 +77,7 @@ async def get_file(
     return await file_access(conn, user, file_id)
 
 
-@router.delete("/delete_file")
+@router.delete("/delete_file", response_model=SuccessResponse)
 async def delete_file(
     file_id: UUID = Query(...),
     user: CurrentUser = None,
@@ -76,7 +92,11 @@ async def delete_file(
     return {"ok": True}
 
 
-@router.post("/create_file_upload", status_code=status.HTTP_201_CREATED, response_model=FileUploadResponse)
+@router.post(
+    "/create_file_upload",
+    status_code=status.HTTP_201_CREATED,
+    response_model=FileUploadResponse,
+)
 async def create_file_upload(
     data: FileUploadRequest,
     user: CurrentUser,
@@ -92,7 +112,12 @@ async def create_file_upload(
             **data.model_dump(),
             uploader_id=user["id"],
             url=f"s3://{bucket}/{key}",
-            meta={"storage": "s3", "bucket": bucket, "key": key, "upload_status": "pending"},
+            meta={
+                "storage": "s3",
+                "bucket": bucket,
+                "key": key,
+                "upload_status": "pending",
+            },
         ),
     )
     return {
@@ -116,7 +141,13 @@ async def complete_file_upload(
     meta = record.get("meta") or {}
     if meta.get("storage") != "s3":
         raise HTTPException(422, "Это не загрузка S3")
-    await to_thread(storage.verify_upload, meta["bucket"], meta["key"], record["size_bytes"], record["mime_type"])
+    await to_thread(
+        storage.verify_upload,
+        meta["bucket"],
+        meta["key"],
+        record["size_bytes"],
+        record["mime_type"],
+    )
     return await methods.complete_file_upload(conn, file_id)
 
 
@@ -133,5 +164,7 @@ async def get_file_download(
         return {"download_url": record["url"], "expires_in": None}
     if meta.get("upload_status") != "ready":
         raise HTTPException(409, "Загрузка файла ещё не подтверждена")
-    url = await to_thread(storage.download_url, meta["bucket"], meta["key"], record.get("file_name"))
+    url = await to_thread(
+        storage.download_url, meta["bucket"], meta["key"], record.get("file_name")
+    )
     return {"download_url": url, "expires_in": storage.TTL}

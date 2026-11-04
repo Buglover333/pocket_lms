@@ -1,5 +1,6 @@
 """Модели публичного API; общие поля переиспользуются из schemas.data."""
 
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
@@ -10,15 +11,22 @@ from pydantic import (
     EmailStr,
     Field,
     field_validator,
+    model_validator,
 )
 
 from backend.schemas.data import (
+    AssignmentResponse,
+    AssignmentTargetResponse,
     DisciplineBase,
+    DisciplineResponse,
     MemberRole,
-    ModuleBase,
+    MemberStatus,
+    ModuleResponse,
+    SubmissionReviewRequest,
+    SubmissionStatus,
     UserProfileResponse,
     UserPublicBase,
-    SubmissionReviewRequest,
+    UserResponse,
 )
 
 
@@ -30,7 +38,7 @@ class AuthRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         json_schema_extra={
-            "examples": [{"email": "student@example.com", "password": "ExamplePass123"}]
+            "examples": [{"email": "student@mail.ru", "password": "ExamplePass123"}]
         },
     )
 
@@ -55,32 +63,91 @@ RegisterResponse = UserPublicBase
 UserInfoResponse = UserProfileResponse
 
 
-class CourseItem(DisciplineBase):
-    id: UUID
-    module_id: UUID | None
+class CourseItem(DisciplineResponse):
+    role: MemberRole | None = Field(
+        default=None, validation_alias=AliasChoices("role", "member_role")
+    )
+    team_id: UUID | None = None
+
+
+class CourseCreateRequest(DisciplineBase):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["draft", "published"]
     author_id: UUID
-    cover_file_id: UUID | None
-    role: MemberRole = Field(validation_alias=AliasChoices("role", "member_role"))
-    team_id: UUID | None
+    module_id: UUID | None = None
+    cover_file_id: UUID | None = None
 
 
-class CoursesResponse(BaseModel):
-    items: list[CourseItem]
+class CourseCreatedResponse(DisciplineResponse):
+    invite_code: str = Field(
+        description="Legacy-код генерируется сервером; для вступления используйте create_invitation"
+    )
 
 
-class ModuleItem(ModuleBase):
-    id: UUID
-    curator_id: UUID
+class ModuleDataResponse(ModuleResponse):
+    disciplines: list[DisciplineResponse]
 
 
-class ModulesResponse(BaseModel):
-    items: list[ModuleItem]
+class CourseMemberResponse(UserResponse):
+    user_id: UUID
+    member_id: UUID
+    discipline_id: UUID
+    role: MemberRole
+    status: MemberStatus
+    team_id: UUID | None = None
+    middle_name: str | None = None
+    avatar_id: UUID | None = None
+    enrolled_at: datetime
+
+
+class AssignmentTargetProfileResponse(AssignmentTargetResponse):
+    user_id: UUID
+    first_name: str
+    last_name: str
+    email: str
+
+
+class AssignmentDataResponse(BaseModel):
+    assignment: AssignmentResponse
+    targets: list[AssignmentTargetProfileResponse]
+
+
+class GradeResponse(BaseModel):
+    assignment_id: UUID
+    assignment_title: str
+    max_score: int = Field(gt=0)
+    due_date: datetime | None
+    submission_id: UUID | None
+    status: SubmissionStatus | None
+    score: float | None = Field(ge=0, allow_inf_nan=False)
+    feedback: str | None
+    graded_at: datetime | None
+    attempt_number: int | None = Field(ge=1)
+
+    @model_validator(mode="after")
+    def check_grade(self):
+        if self.score is not None and self.score > self.max_score:
+            raise ValueError("Оценка превышает максимум задания")
+        if self.submission_id is None and any(
+            v is not None
+            for v in (
+                self.status,
+                self.score,
+                self.feedback,
+                self.graded_at,
+                self.attempt_number,
+            )
+        ):
+            raise ValueError("Данные сдачи отсутствуют")
+        return self
 
 
 class ProfileSettingsUpdate(BaseModel):
     """Public self-service fields. Internal UserUpdate also supports password hashes."""
 
     model_config = ConfigDict(extra="forbid")
+    middle_name: str | None = Field(default=None, max_length=100)
+    avatar_id: UUID | None = None
     first_name: str | None = Field(default=None, min_length=1, max_length=100)
     last_name: str | None = Field(default=None, min_length=1, max_length=100)
 
@@ -90,6 +157,16 @@ class ProfileSettingsUpdate(BaseModel):
         if value is None:
             raise ValueError("Имя и фамилия не могут быть пустыми")
         return value.strip() if isinstance(value, str) else value
+
+    @field_validator("middle_name", mode="before")
+    @classmethod
+    def clean_middle_name(cls, value):
+        return value.strip() or None if isinstance(value, str) else value
+
+
+class DeleteAccountRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    current_password: str = Field(min_length=1, max_length=64)
 
 
 class GradeSubmissionRequest(SubmissionReviewRequest):
@@ -110,7 +187,7 @@ class FileUploadRequest(BaseModel):
     submission_id: UUID | None = None
 
 
-from backend.schemas.data import LessonResponse, FileResponse, SubmissionResponse
+from backend.schemas.data import FileResponse, LessonResponse, SubmissionResponse
 
 
 class MaterialDataResponse(BaseModel):

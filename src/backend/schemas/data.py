@@ -1,6 +1,6 @@
-from datetime import date, datetime
-import secrets
 import re
+import secrets
+from datetime import date, datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -13,6 +13,7 @@ from pydantic import (
     model_validator,
 )
 
+from backend.schemas.email_policy import russian_registration_email
 
 # ==============================================================================
 # 1. СХЕМЫ МОДУЛЕЙ (Таблица modules)
@@ -132,7 +133,6 @@ class DisciplineResponse(DisciplineBase):
     id: UUID
     module_id: UUID | None
     author_id: UUID
-    invite_code: str
     cover_file_id: UUID | None
     created_at: datetime
     updated_at: datetime | None
@@ -155,7 +155,7 @@ class UserRegister(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "email": "student@example.com",
+                    "email": "student@mail.ru",
                     "first_name": "Анна",
                     "last_name": "Иванова",
                     "password": "ExamplePass123",
@@ -174,7 +174,7 @@ class UserRegister(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email(cls, value: str) -> str:
-        return value.lower()
+        return russian_registration_email(value)
 
     @field_validator("first_name", "last_name", mode="before")
     @classmethod
@@ -218,6 +218,8 @@ class UserUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    middle_name: str | None = Field(default=None, max_length=100)
+    avatar_id: UUID | None = None
     email: str | None = Field(default=None, min_length=3, max_length=255)
     password_hash: str | None = Field(default=None, min_length=1, max_length=255)
     first_name: str | None = Field(default=None, min_length=1, max_length=100)

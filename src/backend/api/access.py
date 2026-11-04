@@ -102,7 +102,10 @@ async def file_access(conn, user, file_id, *, write=False):
             if not user.get("is_admin"):
                 raise HTTPException(403, "Файлы отправленной работы нельзя изменять")
     elif not (owner or staff):
-        raise HTTPException(403, "Нет доступа к файлу")
+        if write or not await methods.can_view_profile_avatar(
+            conn, file_id, user["id"]
+        ):
+            raise HTTPException(403, "Нет доступа к файлу")
     return record
 
 

@@ -1,92 +1,70 @@
-# API Pocket LMS
+# API Pocket LMS — 04.11.2026
 
-> Локальная правка 25.10.2026: подробные типы/примеры — API_CONTRACT_REVIEW.md; сверка с БД и ограничения — docs/REVIEW_2026-10-25.md. Подготовлено для ветки endpoints.
+Текущий контракт: feature/api-contract-review. Точные схемы и примеры — [API_CONTRACT_REVIEW.md](API_CONTRACT_REVIEW.md), OpenAPI — [openapi.json](openapi.json). Решения аналитиков — [docs/API_REVIEW_2026-11-04.md](docs/API_REVIEW_2026-11-04.md).
 
-Базовый формат обмена данными — JSON. Все идентификаторы имеют тип UUID.
+GET /get_courses, /get_modules, /get_assignments, /get_groups, /get_members, /get_team_members и /get_grades возвращают массивы. Материалы и сдачи сохраняют MaterialsResponse/SubmissionsResponse с items.
 
-## Сводная таблица всех эндпоинтов по роутерам
+Публичное обновление профиля: first_name, last_name, middle_name, avatar_id. Email/SMTP отложены. Самостоятельное удаление — DELETE /delete_account с current_password. При регистрации действует список российских почтовых сервисов.
 
-| Роутер | Метод | URL | Назначение | Таблицы БД | Авторизация |
-|---|---|---|---|---|---|
-| **auth / users** | `POST` | `/register` | Регистрация нового пользователя | `users` | Нет |
-| **auth / users** | `POST` | `/auth` | Вход пользователя (получение токена) | `users` | Нет |
-| **auth / users** | `GET` | `/get_user_info` | Профиль пользователя | `users` | Bearer |
-| **auth / users** | `PATCH` | `/update_settings` | Изменение своего имени и фамилии | `users` | Bearer |
-| **modules** | `GET` | `/get_modules` | Список модулей пользователя | `modules`, `disciplines`, `discipline_members` | Bearer |
-| **modules** | `GET` | `/get_module_data` | Данные модуля и его дисциплины | `modules`, `disciplines` | Bearer |
-| **modules** | `POST` | `/create_module` | Создание модуля | `modules` | Bearer |
-| **modules** | `PATCH` | `/update_module` | Редактирование модуля | `modules` | Bearer |
-| **courses** | `GET` | `/get_courses` | Курсы текущего пользователя | `disciplines`, `discipline_members` | Bearer |
-| **courses** | `GET` | `/get_course_data` | Данные курса и список уроков | `disciplines`, `lessons` | Bearer |
-| **courses** | `POST` | `/create_course` | Создание курса | `disciplines` | Bearer |
-| **courses** | `PATCH` | `/update_course` | Редактирование курса | `disciplines` | Bearer |
-| **courses** | `POST` | `/create_invitation` | Генерация/получение кода приглашения | `disciplines` | Bearer |
-| **courses** | `POST` | `/accept_invitation` | Запись на курс по инвайт-коду | `disciplines`, `discipline_members` | Bearer |
-| **courses** | `GET` | `/get_members` | Список участников курса | `discipline_members`, `users` | Bearer |
-| **lessons** | `GET` | `/get_materials` | Материалы/уроки курса | `lessons` | Bearer |
-| **lessons** | `GET` | `/get_material_data` | Содержимое урока и вложения | `lessons`, `files` | Bearer |
-| **lessons** | `POST` | `/create_material` | Создание урока/материала | `lessons` | Bearer |
-| **lessons** | `PATCH` | `/update_material` | Редактирование урока | `lessons` | Bearer |
-| **lessons** | `DELETE` | `/delete_material` | Удаление урока | `lessons` | Bearer |
-| **assignments** | `GET` | `/get_assignments` | Список заданий к уроку | `assignments` | Bearer |
-| **assignments** | `GET` | `/get_assignment_data` | Детали задания, критерии, таргеты | `assignments` | Bearer |
-| **assignments** | `POST` | `/create_assignment` | Создание задания | `assignments`, `assignment_targets` | Bearer |
-| **assignments** | `PATCH` | `/update_assignment` | Редактирование задания | `assignments` | Bearer |
-| **assignments** | `DELETE` | `/delete_assignment` | Удаление задания | `assignments` | Bearer |
-| **assignments** | `GET` | `/get_calendar` | Дедлайны по курсу | `assignments`, `lessons` | Bearer |
-| **submissions** | `POST` | `/submit_work` | Сдача решения задания | `submissions` | Bearer |
-| **submissions** | `POST` | `/resubmit_work` | Повторная сдача работы | `submissions` | Bearer |
-| **submissions** | `GET` | `/get_submissions` | Сдачи выбранного студента по заданию (свои по умолчанию) | `submissions`, `users` | Bearer |
-| **submissions** | `GET` | `/get_submission_data` | Детали сдачи и файлы | `submissions`, `files` | Bearer |
-| **submissions** | `POST` | `/grade_submission` | Оценивание и фидбек | `submissions` | Bearer |
-| **submissions** | `POST` | `/return_submission` | Возврат работы на доработку | `submissions` | Bearer |
-| **submissions** | `GET` | `/get_grades` | Табель оценок студента | `submissions`, `assignments` | Bearer |
-| **teams** | `GET` | `/get_groups` | Команды курса | `teams` | Bearer |
-| **teams** | `POST` | `/create_group` | Создание команды | `teams` | Bearer |
-| **teams** | `GET` | `/get_team_members` | Участники команды | `discipline_members`, `users` | Bearer |
-| **teams** | `PATCH` | `/update_group` | Редактирование команды | `teams` | Bearer |
-| **teams** | `DELETE` | `/delete_group` | Удаление команды | `teams` | Bearer |
-| **files** | `POST` | `/upload_file` | Регистрация внешней HTTP-ссылки | `files` | Bearer |
-| **files** | `GET` | `/get_file` | Получение метаданных файла | `files` | Bearer |
-| **files** | `POST` | `/create_file_upload` | Подготовка загрузки в S3: JSON → подписанная форма | `files` | Bearer |
-| **files** | `POST` | `/complete_file_upload` | Подтверждение загрузки после S3 HEAD | `files` | Bearer |
-| **files** | `GET` | `/get_file_download` | Временная ссылка на файл после проверки доступа | `files` | Bearer |
-| **files** | `DELETE` | `/delete_file` | Удаление файла | `files` | Bearer |
-| **frontend** | `POST` | `/app` | Отдать frontend приложения | Нет | Нет |
+GET /get_course_data возвращает карточку без материалов и инвайт-кода. GET /get_module_data возвращает поля ModuleResponse и disciplines без инвайт-кодов. Создание курса требует draft/published, код генерирует сервер. Приглашения создаются отдельно с ролью и областью.
 
----
+GET /app отдаёт frontend/dist/index.html как text/html. Пока сборки нет — 503. Для размещения frontend и API на одном origin CORS между ними не требуется. Это опциональная раздача сборки; frontend ещё не реализован.
 
-## Авторизация
-
-Для защищённых запросов используется стандартный Bearer Token:
-
-```http
-Authorization: Bearer <access_token>
-```
-
----
-
-## Архитектура и структура кода
-
-Все эндпоинты разбиты по отдельным модулям в пакете `backend.api.routers`:
-- `auth.py` — регистрация и вход в систему
-- `users.py` — получение и обновление профиля и настроек
-- `modules.py` — работа с образовательными модулями
-- `courses.py` — управление курсами, участниками и инвайт-кодами
-- `lessons.py` — материалы и уроки дисциплин
-- `assignments.py` — создание и просмотр заданий, дедлайны
-- `submissions.py` — приём работ, проверка преподавателем, выставление оценок
-- `teams.py` — проектные команды обучающихся
-- `files.py` — загрузка и доступ к учебным файлам
-- `frontend.py` — отдача клиентского приложения
-
-Обработчики HTTP-запросов вызывают исключительно готовые методы сервисного слоя из `backend.db.methods`.
-Прямое обращение к базе данных или выполнение сырого SQL внутри роутеров запрещено и контролируется автоматическими архитектурными тестами (`tests/test_api_architecture.py`).
-
-## Уточнения контракта 25.10.2026
-
-- Профиль читает только GET /get_user_info?user_id=…; ID должен совпадать с токеном. get_settings удалён как дубликат. PATCH /update_settings принимает только first_name и last_name.
-- GET /get_course_data уже содержит доступные lessons. GET /get_materials отдельно обновляет этот список; при первом открытии не требуется делать оба запроса.
-- POST /grade_submission принимает только graded (можно не указывать status), обязательные score и grader_id. Вызвавший преподаватель определяется токеном; score от 0 до max_score. Возврат — POST /return_submission.
-- Все четыре DELETE сохранены. /delete_file удаляет запись; физическая очистка S3 требует отдельной процедуры.
-- Таймер публикации, персональные получатели материалов и остальные разрывы юзер-флоу перечислены в docs/REVIEW_2026-10-25.md; эти возможности ещё не реализованы.
+| Метод | Путь | Назначение | Успешный ответ |
+|---|---|---|---|
+| POST | `/register` | Register | 201 UserPublicBase |
+| POST | `/auth` | Authenticate | 200 AuthResponse |
+| POST | `/auth/refresh` | Обновить вход на текущем устройстве | 200 AuthResponse |
+| POST | `/auth/logout` | Выйти на текущем устройстве | 200 SuccessResponse |
+| GET | `/auth/sessions` | Посмотреть свои активные устройства | 200 SessionList |
+| POST | `/auth/change_password` | Сменить пароль | 200 MessageResponse |
+| POST | `/admin/password_reset` | Выдать одноразовый код восстановления | 200 ResetCodeResponse |
+| POST | `/auth/reset_password` | Восстановить пароль по коду администратора | 200 MessageResponse |
+| PATCH | `/admin/account_status` | Заблокировать или разблокировать аккаунт | 200 AccountStatusResponse |
+| GET | `/get_user_info` | Get User Info | 200 UserProfileResponse |
+| PATCH | `/update_settings` | Update Settings | 200 UserProfileResponse |
+| DELETE | `/delete_account` | Деактивировать свой аккаунт | 200 SuccessResponse |
+| GET | `/get_courses` | Get Courses | 200 array<CourseItem> |
+| GET | `/get_course_data` | Get Course Data | 200 DisciplineResponse |
+| POST | `/create_course` | Create Course | 201 CourseCreatedResponse |
+| PATCH | `/update_course` | Update Course | 200 DisciplineResponse |
+| POST | `/create_invitation` | Create Invitation | 201 InvitationResponse |
+| POST | `/accept_invitation` | Accept Invitation | 200 InvitationAcceptance |
+| DELETE | `/revoke_invitation` | Revoke Invitation | 200 SuccessResponse |
+| DELETE | `/remove_course_member` | Remove Course Member | 200 SuccessResponse |
+| GET | `/get_members` | Get Members | 200 array<CourseMemberResponse> |
+| GET | `/get_modules` | Get Modules | 200 array<ModuleResponse> |
+| GET | `/get_module_data` | Get Module Data | 200 ModuleDataResponse |
+| POST | `/create_module` | Create Module | 201 ModuleResponse |
+| PATCH | `/update_module` | Update Module | 200 ModuleResponse |
+| DELETE | `/remove_module_member` | Remove Module Member | 200 SuccessResponse |
+| GET | `/get_materials` | Get Materials | 200 MaterialsResponse |
+| GET | `/get_material_data` | Get Material Data | 200 MaterialDataResponse |
+| POST | `/create_material` | Create Material | 201 LessonResponse |
+| PATCH | `/update_material` | Update Material | 200 LessonResponse |
+| DELETE | `/delete_material` | Delete Material | 200 SuccessResponse |
+| GET | `/get_assignments` | Get Assignments | 200 array<AssignmentResponse> |
+| GET | `/get_assignment_data` | Get Assignment Data | 200 AssignmentDataResponse |
+| POST | `/create_assignment` | Create Assignment | 201 AssignmentResponse |
+| PATCH | `/update_assignment` | Update Assignment | 200 AssignmentResponse |
+| DELETE | `/delete_assignment` | Delete Assignment | 200 SuccessResponse |
+| GET | `/get_calendar` | Get Calendar | 200 object |
+| POST | `/submit_work` | Submit Work | 201 SubmissionResponse |
+| POST | `/resubmit_work` | Resubmit Work | 200 SubmissionResponse |
+| GET | `/get_submissions` | Get Submissions | 200 SubmissionsResponse |
+| GET | `/get_submission_data` | Get Submission Data | 200 SubmissionDataResponse |
+| POST | `/grade_submission` | Grade Submission | 200 SubmissionResponse |
+| POST | `/return_submission` | Return Submission | 200 SubmissionResponse |
+| GET | `/get_grades` | Get Grades | 200 array<GradeResponse> |
+| GET | `/get_groups` | Get Groups | 200 array<TeamResponse> |
+| POST | `/create_group` | Create Group | 201 TeamResponse |
+| GET | `/get_team_members` | Get Team Members | 200 array<CourseMemberResponse> |
+| PATCH | `/update_group` | Update Group | 200 TeamResponse |
+| DELETE | `/delete_group` | Delete Group | 200 SuccessResponse |
+| POST | `/upload_file` | Upload File | 201 FileResponse |
+| GET | `/get_file` | Get File | 200 FileResponse |
+| DELETE | `/delete_file` | Delete File | 200 SuccessResponse |
+| POST | `/create_file_upload` | Create File Upload | 201 FileUploadResponse |
+| POST | `/complete_file_upload` | Complete File Upload | 200 FileResponse |
+| GET | `/get_file_download` | Get File Download | 200 FileDownloadResponse |
+| GET | `/app` | Frontend | 200 text/html |

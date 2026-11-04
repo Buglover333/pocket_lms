@@ -5,16 +5,17 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from backend.api.access import can_delete_content, course_access, material_access
 from backend.api.dependencies import AuthUser, Connection, check_is_teacher_or_admin
 from backend.api.errors import PROTECTED_ERRORS
-from backend.api.access import course_access, material_access, can_delete_content
 from backend.db import methods
-from backend.schemas.api import MaterialsResponse, MaterialDataResponse
+from backend.schemas.api import MaterialDataResponse, MaterialsResponse
 from backend.schemas.data import (
     LessonCreateRequest,
     LessonResponse,
     LessonUpdateRequest,
 )
+from backend.schemas.identity import SuccessResponse
 
 router = APIRouter(tags=["Уроки и материалы"], responses=PROTECTED_ERRORS)
 
@@ -78,7 +79,7 @@ async def update_material(
     return updated
 
 
-@router.delete("/delete_material")
+@router.delete("/delete_material", response_model=SuccessResponse)
 async def delete_material(
     material_id: UUID = Query(...),
     user: AuthUser = None,

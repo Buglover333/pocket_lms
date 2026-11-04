@@ -1,10 +1,13 @@
 """Курсы и дисциплины."""
 
+import secrets
 from typing import Any
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from backend.api.access import course_access
 from backend.api.dependencies import (
     AuthUser,
     Connection,
@@ -12,63 +15,49 @@ from backend.api.dependencies import (
     check_is_teacher_or_admin,
 )
 from backend.api.errors import PROTECTED_ERRORS
-from backend.api.access import course_access
-from backend.db import methods, invitations
 from backend.api.security import secret_digest
-from backend.schemas.identity import (
-    InvitationCreate,
-    InvitationResponse,
-    InvitationAcceptance,
-    SuccessResponse,
+from backend.db import invitations, methods
+from backend.schemas.api import (
+    CourseCreatedResponse,
+    CourseCreateRequest,
+    CourseItem,
+    CourseMemberResponse,
 )
-import secrets
-from urllib.parse import quote
-from backend.schemas.api import CoursesResponse
 from backend.schemas.data import (
     DisciplineCreateRequest,
-    DisciplineMemberCreateRequest,
-    DisciplineMemberProfileResponse,
-    DisciplineMemberResponse,
     DisciplineResponse,
     DisciplineUpdateRequest,
+)
+from backend.schemas.identity import (
+    InvitationAcceptance,
+    InvitationCreate,
+    InvitationResponse,
+    SuccessResponse,
 )
 
 router = APIRouter(tags=["Курсы"], responses=PROTECTED_ERRORS)
 
 
-@router.get("/get_courses", response_model=CoursesResponse)
-async def get_courses(user: CurrentUser, conn: Connection) -> dict[str, Any]:
-    return {
-        "items": await methods.get_user_disciplines(conn, user["id"], active_only=True)
-    }
+@router.get("/get_courses", response_model=list[CourseItem])
+async def get_courses(user: CurrentUser, conn: Connection) -> list[dict[str, Any]]:
+    return await methods.get_user_disciplines(conn, user["id"], active_only=True)
 
 
-@router.get("/get_course_data")
+@router.get("/get_course_data", response_model=DisciplineResponse)
 async def get_course_data(
-    course_id: UUID = Query(...),
-    user: AuthUser = None,
-    conn: Connection = None,
-) -> dict[str, Any]:
-    course, is_teacher, _ = await course_access(conn, user, course_id)
-
-    course_data = dict(course)
-    if not is_teacher and not user.get("is_admin"):
-        course_data.pop("invite_code", None)
-
-    lessons = await methods.get_lessons_by_discipline(conn, course_id)
-    return {
-        "course": course_data,
-        "lessons": lessons if is_teacher else [x for x in lessons if x["is_published"]],
-    }
+    course_id: UUID = Query(...), user: AuthUser = None, conn: Connection = None
+):
+    course, _, _ = await course_access(conn, user, course_id)
+    return course
 
 
 @router.post(
     "/create_course",
-    response_model=DisciplineResponse,
+    response_model=CourseCreatedResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_course(
-    data: DisciplineCreateRequest,
+    data: CourseCreateRequest,
     user: AuthUser,
     conn: Connection,
 ) -> dict[str, Any]:
@@ -87,7 +76,9 @@ async def create_course(
     import psycopg
 
     try:
-        return await methods.create_discipline(conn, data)
+        return await methods.create_discipline(
+            conn, DisciplineCreateRequest(**data.model_dump())
+        )
     except psycopg.errors.UniqueViolation as exc:
         raise HTTPException(
             409, "Код курса уже существует; используйте другой или не указывайте его"
@@ -245,7 +236,7 @@ async def remove_course_member(
     return {"ok": True}
 
 
-@router.get("/get_members")
+@router.get("/get_members", response_model=list[CourseMemberResponse])
 async def get_members(
     course_id: UUID = Query(...),
     user: AuthUser = None,
@@ -264,4 +255,4 @@ async def get_members(
             status_code=403, detail="Вы не являетесь участником этого курса"
         )
     profiles = await methods.get_discipline_members_with_profiles(conn, course_id)
-    return {"items": profiles}
+    return profiles

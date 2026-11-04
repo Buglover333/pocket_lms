@@ -132,7 +132,14 @@ async def update_user(
     if not changes:
         return await get_user_by_id(conn, user_id, include_inactive=True)
 
-    allowed_columns = {"email", "password_hash", "first_name", "last_name"}
+    allowed_columns = {
+        "email",
+        "password_hash",
+        "first_name",
+        "last_name",
+        "middle_name",
+        "avatar_id",
+    }
     if not set(changes).issubset(allowed_columns):
         raise ValueError("UserUpdate содержит неподдерживаемые поля")
 
@@ -378,12 +385,12 @@ async def get_teams_by_discipline(
 async def get_team_members(conn: psycopg.AsyncConnection, team_id: UUID) -> list[dict]:
     """Получить список участников команды со сведениями о студентах (для командного оценивания)."""
     query = """
-        SELECT dm.id AS member_id, dm.user_id, dm.role, dm.status,
-               u.email, u.first_name, u.last_name
-        FROM discipline_members dm
-        JOIN users u ON dm.user_id = u.id
-        WHERE dm.team_id = %s
-        ORDER BY u.last_name, u.first_name;
+        SELECT u.id,dm.id AS member_id,dm.discipline_id,dm.user_id,dm.role,dm.status,dm.team_id,dm.enrolled_at,
+               u.email,u.first_name,u.last_name,u.middle_name,u.avatar_id,u.is_active,u.created_at,u.updated_at
+        FROM discipline_members dm JOIN users u ON dm.user_id=u.id
+        JOIN teams t ON t.id=dm.team_id AND t.discipline_id=dm.discipline_id
+        WHERE dm.team_id=%s AND dm.status='active' AND u.is_active
+        ORDER BY u.last_name,u.first_name
     """
     async with conn.cursor(row_factory=dict_row) as cur:
         await cur.execute(query, (team_id,))
@@ -455,7 +462,7 @@ async def get_discipline_members(
     conn: psycopg.AsyncConnection, discipline_id: UUID, role: str | None = None
 ) -> list[dict]:
     """Список участников курса с опциональной фильтрацией по роли."""
-    query = "SELECT * FROM discipline_members WHERE discipline_id = %s"
+    query = "SELECT dm.*,u.is_active AS user_is_active FROM discipline_members dm JOIN users u ON u.id=dm.user_id WHERE dm.discipline_id = %s"
     params: list[Any] = [discipline_id]
     if role:
         query += " AND role = %s"
@@ -472,8 +479,8 @@ async def get_discipline_members_with_profiles(
 ) -> list[dict]:
     """Список участников с контактными данными из users (для раздела Контакты)."""
     query = """
-        SELECT dm.id, dm.discipline_id, dm.user_id, dm.role, dm.status, dm.team_id, dm.enrolled_at,
-               u.email, u.first_name, u.last_name, u.avatar_id
+        SELECT u.id, dm.id AS member_id, dm.discipline_id, dm.user_id, dm.role, dm.status, dm.team_id, dm.enrolled_at,
+               u.email,u.first_name,u.last_name,u.middle_name,u.avatar_id,u.is_active,u.created_at,u.updated_at
         FROM discipline_members dm
         JOIN users u ON dm.user_id = u.id
         WHERE dm.discipline_id = %s AND dm.status='active' AND u.is_active
@@ -503,7 +510,7 @@ async def get_user_disciplines(
 
 
 async def get_user_modules(conn, user_id: UUID) -> list[dict]:
-    query = """SELECT DISTINCT m.id,m.title,m.description,m.curator_id FROM modules m
+    query = """SELECT m.* FROM modules m
         WHERE m.curator_id=%s OR EXISTS(SELECT 1 FROM module_members mm
             WHERE mm.module_id=m.id AND mm.user_id=%s AND mm.status='active')
         OR EXISTS(SELECT 1 FROM disciplines d LEFT JOIN discipline_members dm ON dm.discipline_id=d.id
@@ -827,7 +834,11 @@ async def resolve_course_member_ids(
     members = await get_discipline_members(conn, discipline_id)
     id_to_member_id: dict[UUID, UUID] = {}
     for m in members:
-        if m.get("status") == "active":
+        if (
+            m.get("status") == "active"
+            and m.get("role") == "student"
+            and m.get("user_is_active", True)
+        ):
             id_to_member_id[m["user_id"]] = m["id"]
             id_to_member_id[m["id"]] = m["id"]
 
@@ -1110,3 +1121,23 @@ async def attach_submission_files(conn, file_ids, submission_id):
                 "UPDATE files SET submission_id = %s WHERE id = ANY(%s)",
                 (submission_id, file_ids),
             )
+
+
+async def can_view_profile_avatar(conn, file_id, viewer_id):
+    async with conn.cursor(row_factory=dict_row) as cur:
+        await cur.execute(
+            "SELECT id FROM users WHERE avatar_id=%s AND is_active", (file_id,)
+        )
+        owners = await cur.fetchall()
+    if not owners:
+        return False
+    viewer_courses = {
+        c["id"] for c in await get_user_disciplines(conn, viewer_id, active_only=True)
+    }
+    for owner in owners:
+        if viewer_courses.intersection(
+            c["id"]
+            for c in await get_user_disciplines(conn, owner["id"], active_only=True)
+        ):
+            return True
+    return False

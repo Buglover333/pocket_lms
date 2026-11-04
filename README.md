@@ -45,9 +45,9 @@ docker compose exec -T postgres psql -U myuser -d mydb -v ON_ERROR_STOP=1 < src/
 
 ## Будущий frontend
 
-Frontend пока не разработан. POST /app возвращает 503 с объяснением, пока нет
+Frontend пока не разработан. GET /app возвращает 503 с объяснением, пока нет
 frontend/dist/index.html. Другую папку сборки можно задать через FRONTEND_DIR
-в .env. После появления сборки перезапустите API: POST /app отдаст index.html
+в .env. После появления сборки перезапустите API: GET /app отдаст index.html
 с Content-Type: text/html. Если есть подпапка assets, она доступна по /assets.
 Окончательные пути остальных ресурсов настраиваются под будущую сборку.
 База данных для этого запроса не нужна.
@@ -98,14 +98,14 @@ tests/test_crud.py учитывает TEST_DATABASE_URL; без этой пер�
 active_only=True. Из внутренних результатов в публичный ответ попадают только
 поля, перечисленные в модели ответа.
 
-HTTP-контракт API_DESCRIPTION.md сохранён, включая POST /app, старые адреса
+Актуальный HTTP-контракт описан в API_DESCRIPTION.md, включая GET /app, адреса
 /get_* и параметр user_id. Переименование адресов и получение user_id только
 из токена требуют отдельного согласования контракта командой.
 
 
 ## Локальная проверка 25.10.2026
 
-Исправления подготовлены для ветки endpoints; публикация на GitHub выполняется отдельно. См. docs/REVIEW_2026-10-25.md, API_CONTRACT_REVIEW.md и TEST_RESULTS_REVIEW.md. Публичное обновление профиля ограничено именем и фамилией. Список сдач ограничен выбранным студентом. Для файлов S3 используется create_file_upload → отправка формы в хранилище → complete_file_upload → get_file_download. Для S3 нужны bucket, IAM credentials/роль и CORS провайдера; настоящие ключи не входят в проект.
+Исправления подготовлены для ветки endpoints; публикация на GitHub выполняется отдельно. См. docs/REVIEW_2026-10-25.md, API_CONTRACT_REVIEW.md и TEST_RESULTS_REVIEW.md. Публичное обновление профиля поддерживает имя, фамилию, отчество и аватар. Список сдач ограничен выбранным студентом. Для файлов S3 используется create_file_upload → отправка формы в хранилище → complete_file_upload → get_file_download. Для S3 нужны bucket, IAM credentials/роль и CORS провайдера; настоящие ключи не входят в проект.
 
 
 ## Аутентификация и права (feature/authentication)
@@ -126,3 +126,12 @@ uv run --env-file .env python scripts/migrate.py
 В тестовой команде выше также добавьте `AUTH_COOKIE_SECURE=false` перед `PYTHONPATH`.
 Новый `/create_invitation` принимает JSON с ролью и курсом/выбранными курсами модуля.
 Старые статические коды из карточки курса не дают права присоединиться: создайте приглашение.
+
+
+## Решения аналитиков — 04.11.2026
+
+Применены в feature/api-contract-review от актуального main bf65edd.
+Изменения форматов ответов, ограничения регистрации и настройки профиля описаны
+в [docs/API_REVIEW_2026-11-04.md](docs/API_REVIEW_2026-11-04.md).
+Новые SQL-миграции для этих правок не нужны: используются существующие middle_name,
+avatar_id и is_active. SMTP, смена email и личная переписка к заданиям не добавлялись.

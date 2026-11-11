@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.api.errors import validation_error
@@ -25,6 +26,14 @@ app = FastAPI(
     responses={422: {"model": ErrorResponse, "description": "Неверный формат запроса"}},
 )
 app.add_exception_handler(RequestValidationError, validation_error)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 for router in (
     auth.router,
